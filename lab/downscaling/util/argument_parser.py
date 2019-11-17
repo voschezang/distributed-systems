@@ -2,6 +2,14 @@ import sys
 
 
 def get_arg(name: str, assertion):
+    """
+    Parses an argument by first checking if the argument name is mentioned. Than making sure a value
+    exist for it. And finally making sure the value is as expected using the assertion.
+    :param name: Name of argument
+    :param assertion: Assertion
+    :return: Value as expected type
+    """
+
     try:
         index = sys.argv.index(name)
         value = sys.argv[index + 1]

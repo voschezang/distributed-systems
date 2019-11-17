@@ -8,6 +8,12 @@ class Master:
         print(self.sub_graph_paths)
 
     def divide_graph(self, graph_path: str) -> [str]:
+        """
+        Divides the graph by diving the graph into `number_of_workers` chunks and writes each chunk to a separate file
+
+        :param graph_path: Path to the file containing the entire graph
+        :return: List of paths to the created chunks
+        """
         paths = []
 
         f = open(graph_path, "r")
