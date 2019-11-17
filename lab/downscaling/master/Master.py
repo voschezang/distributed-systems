@@ -1,48 +1,18 @@
-import sys
-import os
+from lab.downscaling.util.file_io import read_in_chunks, write_chunk
 
 
-def print_error(message):
-    """
-    Print message as error
+class Master:
+    def __init__(self, n_workers: int, graph_path: str):
+        self.n_workers = n_workers
+        self.sub_graph_paths = self.divide_graph(graph_path)
+        print(self.sub_graph_paths)
 
-    :param message: Message to print
-    """
+    def divide_graph(self, graph_path: str) -> [str]:
+        paths = []
 
-    print(message, file=sys.stderr)
+        f = open(graph_path, "r")
+        for worker_id, sub_graph in enumerate(read_in_chunks(f, self.n_workers)):
+            paths.append(write_chunk(worker_id, sub_graph))
+        f.close()
 
-
-def get_arg(name: str, assertion):
-    try:
-        index = sys.argv.index(name)
-        value = sys.argv[index + 1]
-    except ValueError:
-        raise NameError("Unable to find argument: {}".format(name))
-    except IndexError:
-        raise IndexError("No value found for argument: {}".format(name))
-
-    assertion(name, value)
-    return value
-
-
-def is_positive_integer(name, value):
-    if not (value.isDigit() and value > 0):
-        raise AssertionError("Expected a positive integer for {}, but got `{}`".format(name, value))
-
-
-def is_path(name, value):
-    if not (isinstance(value, str) and os.path.exists(value) and os.path.isfile(value)):
-        raise AssertionError("Invalid path for {}: `{}`".format(name, value))
-
-
-if __name__ == '__main__':
-    try:
-        n_workers = get_arg("--n_workers", is_positive_integer)
-        graph_path = get_arg("--graph", is_path)
-    except Exception as e:
-        print_error(e)
-        print_error(
-            "The downscaling master expects the following arguments:\n"
-            "\t--n_workers: The number of worker nodes to create\n"
-            "\t--graph: The path to the graph the downscale\n"
-        )
+        return paths
