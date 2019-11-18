@@ -1,0 +1,43 @@
+from lab.downscaling.util.argument_parser import get_arg
+from lab.downscaling.util.output import print_error
+from lab.downscaling.util.validation import assert_positive_integer, assert_host, assert_path
+from lab.downscaling.worker.DummyWorker import DummyWorker
+
+
+def run(worker_id: int, master_host: str, master_port: int, graph_path: str):
+    """
+    Starts the worker
+
+    :param worker_id: The id of the worker
+    :param master_host: The host of the master
+    :param master_port: The port of the master
+    :param graph_path: The path to the graph the downscale
+    """
+
+    worker = DummyWorker(worker_id, master_host, master_port, graph_path)
+
+
+def main():
+    """
+    Parses arguments to be used for the run
+    """
+
+    try:
+        worker_id = get_arg("--worker-id", assert_positive_integer)
+        master_host = get_arg("--master-host", assert_host)
+        master_port = get_arg("--master-port", assert_positive_integer)
+        graph_path = get_arg("--graph", assert_path)
+        run(worker_id, master_host, master_port, graph_path)
+    except Exception as e:
+        print_error(e)
+        print_error(
+            "The downscaling worker expects the following arguments:\n"
+            "\t--worker-id: The id of the worker\n"
+            "\t--master-host: The host of the master\n"
+            "\t--master-port: The port of the master\n"
+            "\t--graph: The path to the graph the downscale\n"
+        )
+
+
+if __name__ == '__main__':
+    main()
