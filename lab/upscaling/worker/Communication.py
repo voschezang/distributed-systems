@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+from Graph import Graph
 
 
 class Communication:
@@ -9,7 +10,12 @@ class Communication:
         self.master_server_port = self.data['master_server_port']
 
     def receive_graph(self):
-        return self.receive()
+        g = Graph()
+        # g.load_from_file('facebook_combined.txt')
+        # g.save_as_pickle()
+        # asdf
+        return g.load_pickle()
+        # return self.receive()
 
     def receive(self, domain='localhost', port=8890):
         async def receive(websocket, path):

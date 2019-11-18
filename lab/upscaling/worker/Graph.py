@@ -1,3 +1,6 @@
+import pickle
+
+
 class Graph:
     def __init__(self):
         self.vertices_dict = {}
@@ -90,6 +93,17 @@ class Graph:
                 v_1, v_2 = line[:-1].split(" ")
                 edge_set.append([int(v_1), int(v_2)])
         self.addEdgeSet(edge_set)
+
+    def save_to_file(self, filename="graph.txt", mode='adjacency_list'):
+        if mode == 'adjacency_list':
+            with open(filename, 'w') as file:
+                for vertex_1 in self.vertices:
+                    for vertex_2 in self.edges[vertex_1]:
+                        if vertex_1.label < vertex_2.label:
+                            file.write('{} {}\n'.format(
+                                vertex_1.label, vertex_2.label))
+
+        print('done')
 
     def save_as_pickle(self, filename="graph"):
         with open('{}.pkl'.format(filename), 'wb') as file:
