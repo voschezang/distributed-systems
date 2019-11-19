@@ -1,6 +1,6 @@
-from lab.downscaling.util.argument_parser import get_arg
-from lab.downscaling.util.output import print_error
-from lab.downscaling.util.validation import assert_positive_integer, assert_host, assert_path
+from lab.util.argument_parser import get_arg
+from lab.util.output import print_error
+from lab.util.validation import assert_positive_integer, assert_host, assert_path
 from lab.downscaling.worker.DummyWorker import DummyWorker
 
 

@@ -1,4 +1,4 @@
-from lab.downscaling.util import sockets
+from lab.util import sockets
 
 
 class DummyWorker:

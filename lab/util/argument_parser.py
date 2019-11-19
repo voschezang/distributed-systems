@@ -1,6 +1,6 @@
 import sys
 
-from lab.downscaling.util.validation import no_assertion
+from lab.util.validation import no_assertion
 
 
 def get_arg(name: str, assertion=no_assertion):

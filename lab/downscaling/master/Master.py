@@ -1,5 +1,5 @@
-from lab.downscaling.util import sockets, command_line
-from lab.downscaling.util.file_io import read_in_chunks, write_chunk
+from lab.util import command_line, sockets
+from lab.util.file_io import read_in_chunks, write_chunk
 
 
 class Master:
