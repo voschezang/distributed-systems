@@ -1,4 +1,3 @@
-
 from lab.util.message import ALIVE
 import time
 from lab.master.WorkerInterface import WorkerInterface
@@ -9,6 +8,7 @@ class DummyWorker(WorkerInterface):
         """
         Runs the worker
         """
+        print('no base class')
 
         while True:
             time.sleep(1)
