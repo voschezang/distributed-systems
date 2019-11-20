@@ -18,12 +18,12 @@ def get_arg(name: str, assertion=no_assertion, default=None):
         index = sys.argv.index(name)
         value = sys.argv[index + 1]
     except ValueError:
-        raise NameError("Unable to find argument: {}".format(name))
-    except IndexError:
         if default is None:
-            raise IndexError("No value found for argument: {}".format(name))
+            raise NameError("Unable to find argument: {}".format(name))
         else:
             value = default
+    except IndexError:
+        raise IndexError("No value found for argument: {}".format(name))
 
     value = assertion(name, value)
     return value
