@@ -3,10 +3,12 @@ import sys
 from lab.util.validation import no_assertion
 
 
-def get_arg(name: str, assertion=no_assertion):
+def get_arg(name: str, assertion=no_assertion, default=None):
     """
-    Parses an argument by first checking if the argument name is mentioned. Than making sure a value
-    exist for it. And finally making sure the value is as expected using the assertion.
+    Parses an argument by first checking if the argument name is mentioned.
+    Then making sure a value exist for it. And finally making sure the value is
+    as expected using the assertion.
+
     :param name: Name of argument
     :param assertion: Assertion
     :return: Value as expected type
@@ -18,7 +20,10 @@ def get_arg(name: str, assertion=no_assertion):
     except ValueError:
         raise NameError("Unable to find argument: {}".format(name))
     except IndexError:
-        raise IndexError("No value found for argument: {}".format(name))
+        if default is None:
+            raise IndexError("No value found for argument: {}".format(name))
+        else:
+            value = default
 
     value = assertion(name, value)
     return value

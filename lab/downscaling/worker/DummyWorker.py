@@ -3,28 +3,10 @@ from lab.util.message import REGISTER, ALIVE
 import time
 from multiprocessing import Process, Queue
 from lab.util.server import Server
+from lab.master.WorkerInterface import WorkerInterface
 
 
-class DummyWorker:
-    def __init__(self, worker_id: int, master_host: str, master_port: int, graph_path: str):
-        self.worker_id = worker_id
-        self.master_host = master_host
-        self.master_port = master_port
-        self.graph = graph_path
-
-        # Create queue
-        self.server_queue = Queue()
-
-        # Start server with queue
-        server = Process(target=Server, args=(self.server_queue,))
-        server.start()
-
-        # Wait for server to send its hostname and port
-        self.hostname, self.port = self.server_queue.get()
-
-        self.register()
-        self.run()
-
+class DummyWorker(WorkerInterface):
     def send_message_to_master(self, status: str, *args):
         """
         Sends a message to the master
@@ -38,7 +20,8 @@ class DummyWorker:
         """
         Sends a REGISTER request to the master
         """
-        self.send_message_to_master(REGISTER, self.worker_id, self.hostname, self.port)
+        self.send_message_to_master(
+            REGISTER, self.worker_id, self.hostname, self.port)
 
     def run(self):
         """

@@ -1,7 +1,23 @@
 import os
 
 
-def assert_nonnegtive_int(name: str, value: str) -> int:
+def assert_bool(name: str, value: str) -> int:
+    """
+    Makes sure the value is a integer that represents a boolean, otherwise
+    raises AssertionError
+
+    :param name: Argument name
+    :param value: Value
+    :return: Value as integer
+    """
+    if int(value) not in [0, 1]:
+        raise AssertionError(
+            "Expected 0 or 1 for {}, but got `{}`".format(name, value))
+
+    return int(value) == 1
+
+
+def assert_nonnegative_int(name: str, value: str) -> int:
     """
     Makes sure the value is a non-negative integer, otherwise raises AssertionError
 

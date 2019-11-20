@@ -1,6 +1,5 @@
 import subprocess
 from typing import TextIO
-
 from math import floor
 
 

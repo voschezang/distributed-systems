@@ -2,12 +2,12 @@ from lab.util import command_line, message
 from lab.util.file_io import read_in_chunks, write_chunk
 from multiprocessing import Process, Queue
 from lab.util.server import Server
-from datetime import datetime
 from time import time, sleep
 
 
 class Master:
-    def __init__(self, n_workers: int, graph_path: str, worker_script: str):
+    def __init__(self, n_workers: int, graph_path: str, worker_script: str,
+                 split_graph: bool):
         self.worker_script = worker_script
         self.n_workers = n_workers
 
@@ -22,7 +22,7 @@ class Master:
         self.hostname, self.port = self.server_queue.get()
 
         # Split graph into subgraphs and send them to the workers
-        self.sub_graph_paths = self.divide_graph(graph_path)
+        self.sub_graph_paths = self.divide_graph(graph_path, split_graph)
         self.workers = self.create_workers
 
         # Can be used to handle incoming messages from the server
@@ -38,19 +38,24 @@ class Master:
             self.terminate_workers()
             server.close()
 
-    def divide_graph(self, graph_path: str) -> [str]:
+    def divide_graph(self, graph_path: str, split_graph: bool) -> [str]:
         """
         Divides the graph into `number_of_workers` sub graphs and writes each chunk to a separate file
 
         :param graph_path: Path to the file containing the entire graph
         :return: List of paths to the created chunks
         """
-        paths = []
 
-        f = open(graph_path, "r")
-        for worker_id, sub_graph in enumerate(read_in_chunks(f, self.n_workers)):
-            paths.append(write_chunk(worker_id, sub_graph))
-        f.close()
+        if split_graph:
+            paths = []
+
+            f = open(graph_path, "r")
+            for worker_id, sub_graph in enumerate(read_in_chunks(f, self.n_workers)):
+                paths.append(write_chunk(worker_id, sub_graph))
+            f.close()
+        else:
+            # TODO do not duplicate data
+            paths = [graph_path for _ in range(self.n_workers)]
 
         return paths
 
@@ -94,7 +99,7 @@ class Master:
         :param worker_id: Id of worker
         """
 
-        self.workers[worker_id]['last-alive'] = datetime.now()
+        self.workers[worker_id]['last-alive'] = time()
         print(f"Worker {worker_id} is still alive")
 
     def handle_register(self, worker_id, host, port):
@@ -108,7 +113,7 @@ class Master:
 
         self.workers[worker_id]['host'] = host
         self.workers[worker_id]['port'] = port
-        self.workers[worker_id]['last-alive'] = datetime.now()
+        self.workers[worker_id]['last-alive'] = time()
         print(f"Registered worker {worker_id} on {host}:{port}")
 
     def message_in_queue(self) -> bool:
