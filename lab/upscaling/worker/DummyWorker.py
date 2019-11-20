@@ -8,7 +8,6 @@ class DummyWorker(WorkerInterface):
         """
         Runs the worker
         """
-        print('no base class')
 
         while True:
             time.sleep(1)
