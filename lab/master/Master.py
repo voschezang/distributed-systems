@@ -23,7 +23,7 @@ class Master:
 
         # Split graph into subgraphs and send them to the workers
         self.sub_graph_paths = self.divide_graph(graph_path, split_graph)
-        self.workers = self.create_workers
+        self.workers = self.create_workers()
 
         # Can be used to handle incoming messages from the server
         self.message_handler_interface = {
@@ -59,7 +59,6 @@ class Master:
 
         return paths
 
-    @property
     def create_workers(self) -> dict:
         """
         Creates `self.n_workers` workers
