@@ -1,7 +1,7 @@
 from lab.util.argument_parser import get_arg
 from lab.util.output import print_error
 from lab.util.validation import assert_positive_integer, assert_path
-from lab.downscaling.master.Master import Master
+from lab.master.Master import Master
 
 
 def run(n_workers: int, graph_path: str, worker_script: str):
