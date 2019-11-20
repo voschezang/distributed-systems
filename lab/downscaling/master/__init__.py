@@ -31,6 +31,7 @@ def main():
             "The downscaling master expects the following arguments:\n"
             "\t--n_workers: The number of workers to create\n"
             "\t--graph: The path to the graph the downscale\n"
+            "\t--worker-script: Python script for worker\n"
         )
         return
 
