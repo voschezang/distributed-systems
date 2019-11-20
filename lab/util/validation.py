@@ -9,7 +9,6 @@ def assert_nonnegtive_int(name: str, value: str) -> int:
     :param value: Value
     :return: Value as integer
     """
-    if int(value)
     if not (value.isdigit() and int(value) >= 0):
         raise AssertionError(
             "Expected a non-negative integer for {}, but got `{}`".format(name, value))
