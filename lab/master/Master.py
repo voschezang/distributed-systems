@@ -3,7 +3,7 @@ from lab.util.file_io import read_in_chunks, write_chunk
 from multiprocessing import Process, Queue
 from lab.util.server import Server
 from datetime import datetime
-from time import sleep
+from time import time, sleep
 
 
 class Master:
@@ -63,13 +63,13 @@ class Master:
         workers = {}
 
         for worker_id, sub_graph_path in enumerate(self.sub_graph_paths):
-            workers[str(worker_id + 1)] = {
+            workers[str(worker_id)] = {
                 'host': None,
                 'port': None,
                 'last-alive': None,
                 'process': command_line.setup_worker(
                     self.worker_script,
-                    worker_id + 1,
+                    worker_id,
                     self.hostname,
                     self.port,
                     sub_graph_path
