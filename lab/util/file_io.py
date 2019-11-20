@@ -15,8 +15,7 @@ def get_number_of_lines(path: str) -> int:
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT
                            ).communicate()[0]
-
-    return int(out.partition(b' ')[0])
+    return int(out.strip(b' ').partition(b' ')[0])
 
 
 def read_n_lines(f: TextIO, n: int) -> [str]:
