@@ -5,7 +5,7 @@ from lab.util.validation import (
     assert_positive_int,
     assert_host,
     assert_path)
-from lab.downscaling.worker.DummyWorker import DummyWorker
+from lab.upscaling.worker.DummyWorker import DummyWorker
 
 
 def run(worker_id: int, master_host: str, master_port: int, graph_path: str):
@@ -15,7 +15,7 @@ def run(worker_id: int, master_host: str, master_port: int, graph_path: str):
     :param worker_id: The id of the worker
     :param master_host: The host of the master
     :param master_port: The port of the master
-    :param graph_path: The path to the graph to downscale
+    :param graph_path: The path to the graph to scale
     """
 
     worker = DummyWorker(worker_id, master_host, master_port, graph_path)
@@ -34,11 +34,11 @@ def main():
     except Exception as e:
         print_error(e)
         print_error(
-            "The downscaling worker expects the following arguments:\n"
+            "The worker expects the following arguments:\n"
             "\t--worker-id: The id of the worker\n"
             "\t--master-host: The host of the master\n"
             "\t--master-port: The port of the master\n"
-            "\t--graph: The path to the graph to downscale\n"
+            "\t--graph: The path to the graph to scale\n"
         )
         return
 
