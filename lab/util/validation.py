@@ -1,7 +1,23 @@
 import os
 
 
-def assert_positive_integer(name: str, value: str) -> int:
+def assert_nonnegtive_int(name: str, value: str) -> int:
+    """
+    Makes sure the value is a non-negative integer, otherwise raises AssertionError
+
+    :param name: Argument name
+    :param value: Value
+    :return: Value as integer
+    """
+    if int(value)
+    if not (value.isdigit() and int(value) >= 0):
+        raise AssertionError(
+            "Expected a non-negative integer for {}, but got `{}`".format(name, value))
+
+    return int(value)
+
+
+def assert_positive_int(name: str, value: str) -> int:
     """
     Makes sure the value is a positive integer, otherwise raises AssertionError
 
@@ -10,7 +26,8 @@ def assert_positive_integer(name: str, value: str) -> int:
     :return: Value as integer
     """
     if not (value.isdigit() and int(value) > 0):
-        raise AssertionError("Expected a positive integer for {}, but got `{}`".format(name, value))
+        raise AssertionError(
+            "Expected a positive integer for {}, but got `{}`".format(name, value))
 
     return int(value)
 

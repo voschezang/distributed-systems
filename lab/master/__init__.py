@@ -1,6 +1,6 @@
 from lab.util.argument_parser import get_arg
 from lab.util.output import print_error
-from lab.util.validation import assert_positive_integer, assert_path
+from lab.util.validation import assert_nonnegtive_int, assert_positive_int, assert_path
 from lab.master.Master import Master
 
 
@@ -22,7 +22,7 @@ def main():
     """
 
     try:
-        n_workers = get_arg("--n_workers", assert_positive_integer)
+        n_workers = get_arg("--n_workers", assert_nonnegtive_int)
         graph_path = get_arg("--graph", assert_path)
         worker_script = get_arg("--worker-script", assert_path)
     except Exception as e:

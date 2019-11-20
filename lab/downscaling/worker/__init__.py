@@ -1,6 +1,10 @@
 from lab.util.argument_parser import get_arg
 from lab.util.output import print_error
-from lab.util.validation import assert_positive_integer, assert_host, assert_path
+from lab.util.validation import (
+    assert_nonnegtive_int,
+    assert_positive_int,
+    assert_host,
+    assert_path)
 from lab.downscaling.worker.DummyWorker import DummyWorker
 
 
@@ -23,9 +27,9 @@ def main():
     """
 
     try:
-        worker_id = get_arg("--worker-id", assert_positive_integer)
+        worker_id = get_arg("--worker-id", assert_nonnegtive_int)
         master_host = get_arg("--master-host", assert_host)
-        master_port = get_arg("--master-port", assert_positive_integer)
+        master_port = get_arg("--master-port", assert_positive_int)
         graph_path = get_arg("--graph", assert_path)
     except Exception as e:
         print_error(e)
