@@ -32,3 +32,9 @@ def get_message(s):
     client_socket.close()
 
     return message.decode()
+
+
+def send_message(host, port, status, *args):
+    s = connect(host, port)
+    s.send(f"{status},{','.join([str(arg) for arg in args])}".encode())
+    s.close()

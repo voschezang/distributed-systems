@@ -27,7 +27,6 @@ def main():
         master_host = get_arg("--master-host", assert_host)
         master_port = get_arg("--master-port", assert_positive_integer)
         graph_path = get_arg("--graph", assert_path)
-        run(worker_id, master_host, master_port, graph_path)
     except Exception as e:
         print_error(e)
         print_error(
@@ -37,6 +36,9 @@ def main():
             "\t--master-port: The port of the master\n"
             "\t--graph: The path to the graph the downscale\n"
         )
+        return
+
+    run(worker_id, master_host, master_port, graph_path)
 
 
 if __name__ == '__main__':
