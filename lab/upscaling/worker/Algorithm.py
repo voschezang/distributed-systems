@@ -17,10 +17,11 @@ class DegreeDistrubution(Algorithm):
     desired degree distribution has been reached.
     """
 
-    def run(self, scale, graph: Graph):
+    def run(self, graph: Graph, scale=2):
         """ Adds vertices
         Returns a new graph
         """
+        assert scale > 1
         old_size = graph.n_vertices
         new_size = round(old_size * scale)  # worker.arguments['scale']
         # TODO return new vertices
