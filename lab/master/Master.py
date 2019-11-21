@@ -1,13 +1,13 @@
-from lab.util import command_line, message
-from lab.util.file_io import read_in_chunks, write_chunk
+from lab.util import command_line, message, sockets
+from lab.util.file_io import read_in_chunks, write_chunk, get_start_vertex, get_first_line, get_last_line
 from multiprocessing import Process, Queue
 from lab.util.server import Server
 from time import time, sleep
+from lab.util.meta_data import MetaData
 
 
 class Master:
-    def __init__(self, n_workers: int, graph_path: str, worker_script: str,
-                 split_graph: bool):
+    def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool):
         self.worker_script = worker_script
         self.n_workers = n_workers
 
@@ -21,7 +21,7 @@ class Master:
         # Wait for server to send its hostname and port
         self.hostname, self.port = self.server_queue.get()
 
-        # Split graph into subgraphs and send them to the workers
+        # Split graph into sub graphs and send them to the workers
         self.sub_graph_paths = self.divide_graph(graph_path, split_graph)
         self.workers = self.create_workers()
 
@@ -30,6 +30,9 @@ class Master:
             message.ALIVE: self.handle_alive,
             message.REGISTER: self.handle_register
         }
+
+        self.register_workers()
+        self.send_meta_data_to_workers()
 
         # Run master until stopped
         try:
@@ -43,6 +46,7 @@ class Master:
         Divides the graph into `number_of_workers` sub graphs and writes each chunk to a separate file
 
         :param graph_path: Path to the file containing the entire graph
+        :param split_graph: Should the graph be split
         :return: List of paths to the created chunks
         """
 
@@ -67,9 +71,12 @@ class Master:
         workers = {}
 
         for worker_id, sub_graph_path in enumerate(self.sub_graph_paths):
-            workers[str(worker_id)] = {
-                'host': None,
-                'port': None,
+            workers[worker_id] = {
+                'meta-data': MetaData(
+                    worker_id=worker_id,
+                    min_vertex=get_start_vertex(get_first_line(sub_graph_path)),
+                    max_vertex=get_start_vertex(get_last_line(sub_graph_path))
+                ),
                 'last-alive': None,
                 'process': command_line.setup_worker(
                     self.worker_script,
@@ -110,8 +117,7 @@ class Master:
         :param port: Port of worker
         """
 
-        self.workers[worker_id]['host'] = host
-        self.workers[worker_id]['port'] = port
+        self.workers[worker_id]['meta-data'].set_connection_info(host, port)
         self.workers[worker_id]['last-alive'] = time()
         print(f"Registered worker {worker_id} on {host}:{port}")
 
@@ -126,7 +132,18 @@ class Master:
         """
         :return: List of the elements of the data in the queue
         """
-        return self.server_queue.get().split(',')
+        return message.read(self.server_queue.get())
+
+    def register_workers(self):
+        for i in range(len(self.workers)):
+            status, *args = self.get_message_from_queue()
+            self.handle_register(*args)
+
+    def send_meta_data_to_workers(self):
+        all_meta_data = message.write_meta_data([worker['meta-data'].to_dict() for worker_id, worker in self.workers.items()])
+
+        for worker_id, worker in self.workers.items():
+            sockets.send_message(*worker['meta-data'].get_connection_info(), all_meta_data)
 
     def run(self):
         """

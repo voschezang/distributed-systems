@@ -30,6 +30,14 @@ def read_n_lines(f: TextIO, n: int) -> [str]:
     return [next(f) for _ in range(n)]
 
 
+def get_first_line(path: str):
+    return subprocess.check_output(['head', '-1', path]).decode()
+
+
+def get_last_line(path: str):
+    return subprocess.check_output(['tail', '-1', path]).decode()
+
+
 def get_start_vertex(edge: str):
     """
     Retrieves the start vertex of an edge
@@ -38,7 +46,10 @@ def get_start_vertex(edge: str):
     :return: Start vertex
     """
 
-    return edge.split(" ")[0]
+    try:
+        return edge.split(" ")[0]
+    except IndexError:
+        return None
 
 
 def read_rest_of_edges(f: TextIO, start_vertex: str):
