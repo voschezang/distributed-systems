@@ -31,10 +31,10 @@ def get_message(s):
     message = client_socket.recv(1024)
     client_socket.close()
 
-    return message.decode()
+    return message
 
 
-def send_message(host, port, status, *args):
+def send_message(host, port, message: bytes):
     s = connect(host, port)
-    s.send(f"{status},{','.join([str(arg) for arg in args])}".encode())
+    s.send(message)
     s.close()
