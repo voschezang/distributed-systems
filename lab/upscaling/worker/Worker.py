@@ -1,14 +1,34 @@
 import sys
-from Algorithm import DegreeDistrubutionAlgorithm, RandomNodeAlgorithm
-from Communication import Communication
+import time
+
+from lab.util.graph import Graph
+from lab.master.WorkerInterface import WorkerInterface
 
 
-class Worker:
-    def __init__(self, arguments, algorithm='DegreeDistrubutionAlgorithm'):
-        self.parse_arguments(arguments)
-        self.communication = Communication(self.arguments)
-        if algorithm == 'DegreeDistrubutionAlgorithm':
-            self.algorithm = DegreeDistrubutionAlgorithm
+class DummyWorker(WorkerInterface):
+    def run(self):
+        """
+        Runs the worker
+        """
+
+        while True:
+            time.sleep(1)
+            self.send_message_to_master(ALIVE, self.worker_id)
+
+
+class Worker(WorkerInterface):
+    # def __init__(self, arguments, algorithm: Algorithm):
+    #     self.parse_arguments(arguments)
+    #     # self.communication = Communication(self.arguments)
+    #     self.algorithm = algorithm
+
+    def run(self):
+        # self.original_graph = self.communication.receive_graph()
+        # Dubbele self arguments nodig, nog te debuggen
+        # self.generated_graph = self.algorithm.run(self, self)
+        # self.generated_graph.save_to_file('upscaled_graph.txt')
+        graph = Graph(self.graph)
+        diff = Algorithm.DegreeDistrubution(graph)
 
     def parse_arguments(self, arguments):
         decoded_arguments = {}
@@ -17,12 +37,6 @@ class Worker:
             decoded_arguments[argument] = value
 
         self.arguments = decoded_arguments
-
-    def run(self):
-        self.original_graph = self.communication.receive_graph()
-        # Dubbele self arguments nodig, nog te debuggen
-        self.generated_graph = self.algorithm.run(self, self)
-        self.generated_graph.save_to_file('upscaled_graph.txt')
 
 
 if __name__ == "__main__":
