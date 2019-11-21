@@ -5,10 +5,14 @@ class Graph:
     def __init__(self):
         self.vertices_dict = {}
         self.vertices = []
-        self.edges = dict()
+        self.edges = {}
         self.amountOfEdges = 0
         self.rawEdges = []
         self.id = 0
+
+    @property
+    def n_vertices(self):
+        return len(self.vertices)
 
     def addEdgeSet(self, edgeSet):
         number_of_edges = len(edgeSet)
@@ -45,6 +49,15 @@ class Graph:
         self.vertices_dict[label] = v
         self.edges[v] = []
         return v
+
+    def removeVertex(self):
+        raise NotImplementedError
+
+    def removeEdge(self, vertex_1, vertex_2):
+        # remove edge but do not remove any (possibly unconnectec) vertices
+        self.edges[vertex_1].remove(vertex_2)
+        self.amountOfEdges -= 1
+        self.rawEdges.remove(Edge(vertex_1, vertex_2))
 
     def copy(self):
         H = Graph()
