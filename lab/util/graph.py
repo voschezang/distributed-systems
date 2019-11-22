@@ -109,6 +109,9 @@ class Graph:
     def degree(self, vertex):
         return len(self.edges[vertex])
 
+    def max_degree(self):
+        return max([self.degree(vertex) for vertex in self.vertices])
+
     def cleanup(self):
         for v in self.vertices:
             if self.degree(v) == 0:
