@@ -6,6 +6,7 @@ from lab.util.validation import (
     assert_host,
     assert_path)
 from lab.upscaling.worker.Worker import Worker
+from lab.upscaling.worker.Algorithm import Algorithm
 
 
 def run(worker_id: int, master_host: str, master_port: int, graph_path: str):

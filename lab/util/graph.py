@@ -1,18 +1,71 @@
 import pickle
 
 
+class Vertex(int):
+    def __new__(cls, label):
+        # allow direct comparison, e.g. max(list(Vertex))
+        return super(cls, cls).__new__(cls, label)
+
+    def __str__(self):
+        return str(self.label)
+
+    def __repr__(self):
+        return "Vertex " + str(self)
+
+    def __hash__(self):
+        return hash(str(self))
+
+    @property
+    def label(self):
+        return int(self)
+
+
+# class Vertex2:
+#     def __init__(self, label):
+#         self.label = label
+#
+#     def __str__(self):
+#         return str(self.label)
+#
+#     def __repr__(self):
+#         return "Vertex " + str(self)
+#
+#     def __hash__(self):
+#         return hash(str(self))
+#
+#     def __eq__(self, other):
+#         if type(other) == int:
+#             return self.label == other
+#         return self.label == other.label
+
+
+class Edge:
+    def __init__(self, vertex_1, vertex_2):
+        self.vertex_1 = vertex_1
+        self.vertex_2 = vertex_2
+
+    def __str__(self):
+        return str(self.vertex_1) + ' - ' + str(self.vertex_2)
+
+    def __repr__(self):
+        return str(self)
+
+
 class Graph:
     def __init__(self):
-        self.vertices_dict = {}
-        self.vertices = []
-        self.edges = {}
-        self.amountOfEdges = 0
-        self.rawEdges = []
+        self.vertices_dict = {}  # {vertex.label: vertex}
+        self.vertices = []  # list(Vertex)
+        self.edges = {}  # {Vertex: list(Vertex)}
         self.id = 0
 
     @property
     def n_vertices(self):
         return len(self.vertices)
+
+    @property
+    def n_edges(self):
+        # return sum([len(vertices) for vertices in self.edges.values()])
+        return sum(map(len, self.edges.values()))
 
     def addEdgeSet(self, edgeSet):
         number_of_edges = len(edgeSet)
@@ -27,7 +80,7 @@ class Graph:
             vertex_2 = self.vertices_dict[v_2]
             self.addEdge(vertex_1, vertex_2)
 
-    def addEdge(self, vertex_1, vertex_2):
+    def addEdge(self, vertex_1: Vertex, vertex_2: Vertex, bidirectional=True):
         if not vertex_1 in self.vertices:
             raise ValueError("Vertex %s not known in this graph" % vertex_1)
         if not vertex_2 in self.vertices:
@@ -35,35 +88,41 @@ class Graph:
         if vertex_2 in self.edges[vertex_1]:
             raise ValueError(
                 "Edge (%s, %s) already exists in this graph" % (vertex_1, vertex_2))
+        for vertex in [vertex_1, vertex_2]:
+            if vertex not in self.edges.keys():
+                self.edges[vertex] = []
+
         e = Edge(vertex_1, vertex_2)
         self.edges[vertex_1].append(vertex_2)
-        if vertex_1 != vertex_2:
+        if bidirectional and vertex_1 != vertex_2:
             self.edges[vertex_2].append(vertex_1)
-        self.rawEdges.append(e)
-        self.amountOfEdges += 1
         return e
 
-    def addVertex(self, label):
+    def addVertex(self, label) -> Vertex:
         v = Vertex(label)
         self.vertices.append(v)
         self.vertices_dict[label] = v
         self.edges[v] = []
         return v
 
-    def removeVertex(self):
-        raise NotImplementedError
+    def removeVertex(self, v: Vertex):
+        # Remove vertex and outgoing edges
+        self.vertices.remove(v)
+        try:
+            del self.edges[v]
+            del self.vertices_dict[v.label]
+        except KeyError:
+            pass
 
-    def removeEdge(self, vertex_1, vertex_2):
-        # remove edge but do not remove any (possibly unconnectec) vertices
-        self.edges[vertex_1].remove(vertex_2)
-        self.amountOfEdges -= 1
-        self.rawEdges.remove(Edge(vertex_1, vertex_2))
+    def removeEdge(self, a: Vertex, b: Vertex):
+        # remove unidirectional edge but do not remove any
+        # (possibly unconnectec) vertices
+        self.edges[a].remove(b)
 
     def copy(self):
         H = Graph()
         H.vertices = list(self.vertices)
         H.edges = dict((v, list(self.edges[v])) for v in self.edges)
-        H.amountOfEdges = int(self.amountOfEdges)
         H.id = int(self.id) + 1
         return H
 
@@ -112,7 +171,7 @@ class Graph:
             with open(filename, 'w') as file:
                 for vertex_1 in self.vertices:
                     for vertex_2 in self.edges[vertex_1]:
-                        if vertex_1.label < vertex_2.label:
+                        if vertex_1 < vertex_2:
                             file.write('{} {}\n'.format(
                                 vertex_1.label, vertex_2.label))
 
@@ -127,44 +186,13 @@ class Graph:
             return pickle.load(file)
 
     def __str__(self):
-        return "Graph |V|=" + str(len(self.vertices)) + ", |E|=" + str(self.amountOfEdges)
+        return "Graph |V|=" + str(len(self.vertices)) + ", |E|=" + str(self.n_edges)
 
     def __repr__(self):
         return str(self)
 
     def __hash__(self):
         return hash(str(self.edges))
-
-
-class Vertex:
-    def __init__(self, label):
-        self.label = label
-
-    def __str__(self):
-        return str(self.label)
-
-    def __repr__(self):
-        return "Vertex " + str(self)
-
-    def __hash__(self):
-        return hash(str(self))
-
-    def __eq__(self, other):
-        if type(other) == int:
-            return self.label == other
-        return self.label == other.label
-
-
-class Edge:
-    def __init__(self, vertex_1, vertex_2):
-        self.vertex_1 = vertex_1
-        self.vertex_2 = vertex_2
-
-    def __str__(self):
-        return str(self.vertex_1) + ' - ' + str(self.vertex_2)
-
-    def __repr__(self):
-        return str(self)
 
 
 def graph_from_file(filename='graph.txt'):

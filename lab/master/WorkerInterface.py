@@ -62,11 +62,13 @@ class WorkerInterface:
         Sends a message to the master
         """
 
-        sockets.send_message(self.master_host, self.master_port, message_to_send)
+        sockets.send_message(
+            self.master_host, self.master_port, message_to_send)
 
     def register(self):
         """
         Sends a REGISTER request to the master
         """
 
-        self.send_message_to_master(message.write_register(self.worker_id, self.hostname, self.port))
+        self.send_message_to_master(message.write_register(
+            self.worker_id, self.hostname, self.port))
