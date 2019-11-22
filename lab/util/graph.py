@@ -20,25 +20,6 @@ class Vertex(int):
         return int(self)
 
 
-# class Vertex2:
-#     def __init__(self, label):
-#         self.label = label
-#
-#     def __str__(self):
-#         return str(self.label)
-#
-#     def __repr__(self):
-#         return "Vertex " + str(self)
-#
-#     def __hash__(self):
-#         return hash(str(self))
-#
-#     def __eq__(self, other):
-#         if type(other) == int:
-#             return self.label == other
-#         return self.label == other.label
-
-
 class Edge:
     def __init__(self, vertex_1, vertex_2):
         self.vertex_1 = vertex_1
@@ -64,7 +45,6 @@ class Graph:
 
     @property
     def n_edges(self):
-        # return sum([len(vertices) for vertices in self.edges.values()])
         return sum(map(len, self.edges.values()))
 
     def addEdgeSet(self, edgeSet):

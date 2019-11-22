@@ -62,7 +62,6 @@ class DegreeDistrubution(Algorithm):
         if self.v:
             print('adding node with degree {}'.format(new_vertex_degree))
 
-        # assert new_vertex_degree <= new_graph.n_vertices
         new_neighbours = np.random.choice(
             new_graph.vertices, size=new_vertex_degree, replace=False)
         new_vertex = new_graph.addVertex(new_vertex_label)
