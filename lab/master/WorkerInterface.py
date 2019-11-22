@@ -24,6 +24,8 @@ class HearbeatDaemon(Node):
     def __init__(self, worker_id: int, master_host: str, master_port: int,
                  wait_time: float):
         super().__init__(worker_id, master_host, master_port)
+        # give master time to init
+        time.sleep(0.1)
         while True:
             self.send_message_to_master(message.write_alive(self.worker_id))
             time.sleep(wait_time)
