@@ -38,7 +38,7 @@ def get_last_line(path: str):
     return subprocess.check_output(['tail', '-1', path]).decode()
 
 
-def get_start_vertex(edge: str):
+def get_start_vertex(edge: str) -> int or None:
     """
     Retrieves the start vertex of an edge
 
@@ -47,9 +47,13 @@ def get_start_vertex(edge: str):
     """
 
     try:
-        return edge.split(" ")[0]
+        return int(edge.split(" ")[0])
     except IndexError:
         return None
+
+
+def reverse_edge(edge: str):
+    return " ".join(reversed(edge.rstrip().split(" "))) + "\n"
 
 
 def read_rest_of_edges(f: TextIO, start_vertex: str):
@@ -94,7 +98,7 @@ def read_in_chunks(f: TextIO, n_workers: int) -> [str]:
         edges += read_n_lines(f, chunk_size)
 
         # Get rest of edges with the same start vertex and the new edge for the next worker
-        new_edge, rest_of_edges = read_rest_of_edges(f, get_start_vertex(edges[-1]))
+        new_edge, rest_of_edges = read_rest_of_edges(f, str(get_start_vertex(edges[-1])))
 
         edges += rest_of_edges
         lines_read += len(edges)
@@ -109,6 +113,11 @@ def read_in_chunks(f: TextIO, n_workers: int) -> [str]:
     yield edges + read_n_lines(f, number_of_lines - lines_read - 1)
 
 
+def read_as_reversed_edges(f: TextIO):
+    for edge in f:
+        yield reverse_edge(edge)
+
+
 def write_chunk(worker_id: int, data: [str]) -> str:
     """
     Writes a list of lines to a tmp file
@@ -120,8 +129,33 @@ def write_chunk(worker_id: int, data: [str]) -> str:
 
     path = "/tmp/sub_graph_{}.txt".format(worker_id)
 
+    write_to_file(path, data)
+
+    return path
+
+
+def append_edge(path: str, edge: str):
+    f = open(path, "a")
+    f.write(edge)
+    f.close()
+
+
+def read_file(path):
+    f = open(path, "r")
+    lines = f.readlines()
+    f.close()
+
+    return lines
+
+
+def write_to_file(path, data):
     f = open(path, "w")
     f.writelines(data)
     f.close()
 
-    return path
+
+def sort_file(path):
+    lines = read_file(path)
+    lines.sort()
+    write_to_file(path, lines)
+
