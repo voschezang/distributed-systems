@@ -2,7 +2,7 @@ from multiprocessing import Process, Queue
 import time
 
 from lab.util import sockets, message
-from lab.util.meta_data import MetaData
+from lab.util.meta_data import MetaData, CombinedMetaData
 from lab.util.server import Server
 
 
@@ -24,8 +24,7 @@ class HearbeatDaemon(Node):
     def __init__(self, worker_id: int, master_host: str, master_port: int,
                  wait_time: float):
         super().__init__(worker_id, master_host, master_port)
-        # give master time to init
-        time.sleep(0.1)
+
         while True:
             self.send_message_to_master(message.write_alive(self.worker_id))
             time.sleep(wait_time)
@@ -46,7 +45,6 @@ class WorkerInterface(Node):
         # Start server with queue
         server = Process(target=Server, args=(self.server_queue,))
         server.start()
-        self.init_hearbeat_daemon(wait_time=1)
 
         # Wait for server to send its hostname and port
         self.hostname, self.port = self.server_queue.get()
@@ -56,6 +54,8 @@ class WorkerInterface(Node):
 
         # Wait for the meta data of the other workers
         self.meta_data_of_all_workers = self.receive_meta_data()
+
+        self.init_hearbeat_daemon(wait_time=1)
 
         self.run()
 
@@ -68,19 +68,20 @@ class WorkerInterface(Node):
         """
         return message.read(self.server_queue.get())
 
-    def receive_meta_data(self):
+    def receive_meta_data(self) -> CombinedMetaData:
         status, all_meta_data = self.get_message_from_queue()
 
-        return [
+        return CombinedMetaData([
             MetaData(
                 worker_id=meta_data['worker_id'],
+                number_of_edges=meta_data['number_of_edges'],
                 min_vertex=meta_data['min_vertex'],
                 max_vertex=meta_data['max_vertex'],
                 host=meta_data['host'],
                 port=meta_data['port']
             )
             for meta_data in all_meta_data
-        ]
+        ])
 
     def register(self):
         """
