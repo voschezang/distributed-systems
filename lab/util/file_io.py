@@ -52,6 +52,10 @@ def get_start_vertex(edge: str):
         return None
 
 
+def reverse_edge(edge: str):
+    return " ".join(reversed(edge.rstrip().split(" "))) + "\n"
+
+
 def read_rest_of_edges(f: TextIO, start_vertex: str):
     """
     Reads in the rest of the edges that have the same start vertex
@@ -109,6 +113,16 @@ def read_in_chunks(f: TextIO, n_workers: int) -> [str]:
     yield edges + read_n_lines(f, number_of_lines - lines_read - 1)
 
 
+def read_as_reversed_edges(f: TextIO):
+    while True:
+        edge = next(f)
+
+        if not edge:
+            break
+
+        yield reverse_edge(edge)
+
+
 def write_chunk(worker_id: int, data: [str]) -> str:
     """
     Writes a list of lines to a tmp file
@@ -125,3 +139,9 @@ def write_chunk(worker_id: int, data: [str]) -> str:
     f.close()
 
     return path
+
+
+def append_edge(path: str, edge: str):
+    f = open(path, "a")
+    f.write(edge)
+    f.close()

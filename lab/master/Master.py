@@ -1,9 +1,9 @@
 from lab.util import command_line, message, sockets
-from lab.util.file_io import read_in_chunks, write_chunk, get_start_vertex, get_first_line, get_last_line
+from lab.util.file_io import read_in_chunks, write_chunk, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, append_edge
 from multiprocessing import Process, Queue
 from lab.util.server import Server
 from time import time, sleep
-from lab.util.meta_data import MetaData
+from lab.util.meta_data import MetaData, get_path_of_worker_with_vertex
 
 
 class Master:
@@ -22,7 +22,7 @@ class Master:
         self.hostname, self.port = self.server_queue.get()
 
         # Split graph into sub graphs and send them to the workers
-        self.sub_graph_paths = self.divide_graph(graph_path, split_graph)
+        self.meta_data = self.divide_graph(graph_path, split_graph)
         self.workers = self.create_workers()
 
         # Can be used to handle incoming messages from the server
@@ -52,12 +52,26 @@ class Master:
         """
 
         if split_graph:
-            paths = []
+            all_meta_data = []
 
+            # Split graph into self.n_workers sub graphs
             f = open(graph_path, "r")
             for worker_id, sub_graph in enumerate(read_in_chunks(f, self.n_workers)):
-                paths.append(write_chunk(worker_id, sub_graph))
+                sub_graph_path = write_chunk(worker_id, sub_graph)
+                all_meta_data.append(
+                    MetaData(
+                        worker_id=worker_id,
+                        sub_graph_path=sub_graph_path
+                    )
+                )
             f.close()
+
+            f = open(graph_path, "r")
+            for edge in read_as_reversed_edges(f):
+                append_edge(edge)
+
+            f.close()
+
         else:
             # TODO do not duplicate data
             paths = [graph_path for _ in range(self.n_workers)]
