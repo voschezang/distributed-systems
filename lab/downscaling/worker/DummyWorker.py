@@ -11,4 +11,4 @@ class DummyWorker(WorkerInterface):
 
             while True:
                 time.sleep(1)
-                self.send_message_to_master(message.write_alive(self.worker_id))
+                self.send_debug_message("Debugging successful!")
