@@ -88,7 +88,16 @@ class WorkerInterface(Node):
         """
 
         self.send_message_to_master(message.write_register(
-            self.worker_id, self.hostname, self.port))
+            self.worker_id,
+            self.hostname,
+            self.port
+        ))
+
+    def send_debug_message(self, debug_message: str):
+        self.send_message_to_master(message.write_debug(
+            self.worker_id,
+            debug_message
+        ))
 
     def init_hearbeat_daemon(self, wait_time=1):
         self.hearbeat_daemon = Process(target=HearbeatDaemon, args=(

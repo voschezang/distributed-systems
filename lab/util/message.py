@@ -5,6 +5,7 @@ import json
 ALIVE = 200
 REGISTER = 201
 META_DATA = 202
+DEBUG = 203
 
 
 def write(status: int, body: dict or list):
@@ -35,6 +36,16 @@ def write_meta_data(meta_data: list):
     return write(status=META_DATA, body=meta_data)
 
 
+def write_debug(worker_id: int, debug_message: str):
+    return write(
+        status=DEBUG,
+        body={
+            'worker_id': worker_id,
+            'debug_message': debug_message
+        }
+    )
+
+
 def read(message: bytes):
     content = json.loads(message.decode())
 
@@ -53,8 +64,13 @@ def read_meta_data(body: list):
     return META_DATA, body
 
 
+def read_debug(body: dict):
+    return DEBUG, body['worker_id'], body['debug_message']
+
+
 MESSAGE_INTERFACE = {
     ALIVE: read_alive,
     REGISTER: read_register,
-    META_DATA: read_meta_data
+    META_DATA: read_meta_data,
+    DEBUG: read_debug
 }

@@ -28,7 +28,8 @@ class Master:
         # Can be used to handle incoming messages from the server
         self.message_handler_interface = {
             message.ALIVE: self.handle_alive,
-            message.REGISTER: self.handle_register
+            message.REGISTER: self.handle_register,
+            message.DEBUG: self.handle_debug
         }
 
         self.register_workers()
@@ -120,6 +121,9 @@ class Master:
         self.workers[worker_id]['meta-data'].set_connection_info(host, port)
         self.workers[worker_id]['last-alive'] = time()
         print(f"Registered worker {worker_id} on {host}:{port}")
+
+    def handle_debug(self, worker_id, debug_message):
+        print(f"Worker {worker_id}: {debug_message}")
 
     def message_in_queue(self) -> bool:
         """
