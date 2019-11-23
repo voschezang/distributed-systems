@@ -135,3 +135,7 @@ gen
 
 *.DS_Store
 
+
+*.txt
+
+*.pkl
