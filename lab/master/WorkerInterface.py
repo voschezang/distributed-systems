@@ -7,6 +7,10 @@ from lab.util.server import Server
 
 
 class Node:
+    """ Worker node representing a process that may communicate with master and
+    other workers, superclass for the actual workers.
+    """
+
     def __init__(self, worker_id: int, master_host: str, master_port: int):
         self.worker_id = worker_id
         self.master_host = master_host
@@ -21,6 +25,10 @@ class Node:
 
 
 class HearbeatDaemon(Node):
+    """ Daemon process that periodically pings Master to indicate the
+    corresponding worker is alive.
+    """
+
     def __init__(self, worker_id: int, master_host: str, master_port: int,
                  wait_time: float):
         super().__init__(worker_id, master_host, master_port)
