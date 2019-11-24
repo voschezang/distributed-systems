@@ -20,8 +20,17 @@ class Node:
         """
         Sends a message to the master
         """
-        sockets.send_message(
-            self.master_host, self.master_port, message_to_send)
+        while True:
+            try:
+                sockets.send_message(
+                    self.master_host, self.master_port, message_to_send)
+                break
+            except ConnectionResetError:
+                # Possibly:  [Errno 54] Connection reset by peer
+                # Try again until success
+                pass
+            except Exception as e:
+                print('Send msg to master error \n\t', e)
 
 
 class HearbeatDaemon(Node):
@@ -33,6 +42,8 @@ class HearbeatDaemon(Node):
                  wait_time: float):
         super().__init__(worker_id, master_host, master_port)
 
+        # TODO this prevents `BrokenPipeError: [Errno 32] Broken pipe` raised by s.send() in util.sockets.send_message
+        # time.sleep(0.1)
         while True:
             self.send_message_to_master(message.write_alive(self.worker_id))
             time.sleep(wait_time)
@@ -101,6 +112,12 @@ class WorkerInterface(Node):
             self.hostname,
             self.port
         ))
+
+    def send_job_complete(self):
+        """ Sends a JOB_COMPLETE to master. Override if additional information
+        is required.
+        """
+        self.send_message_to_master(message.write_job_complete(self.worker_id))
 
     def send_debug_message(self, debug_message: str):
         self.send_message_to_master(message.write_debug(

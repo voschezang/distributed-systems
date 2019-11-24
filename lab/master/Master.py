@@ -28,7 +28,8 @@ class Master:
         self.message_handler_interface = {
             message.ALIVE: self.handle_alive,
             message.REGISTER: self.handle_register,
-            message.DEBUG: self.handle_debug
+            message.DEBUG: self.handle_debug,
+            message.JOB_COMPLETE: self.handle_job_complete
         }
 
         self.register_workers()
@@ -72,7 +73,8 @@ class Master:
                     'meta-data': MetaData(
                         worker_id=worker_id,
                         number_of_edges=get_number_of_lines(graph_path),
-                        min_vertex=get_start_vertex(get_first_line(graph_path)),
+                        min_vertex=get_start_vertex(
+                            get_first_line(graph_path)),
                         max_vertex=get_start_vertex(get_last_line(graph_path))
                     )
                 }
@@ -91,7 +93,8 @@ class Master:
                 'meta-data': MetaData(
                     worker_id=worker_id,
                     number_of_edges=get_number_of_lines(sub_graph_path),
-                    min_vertex=get_start_vertex(get_first_line(sub_graph_path)),
+                    min_vertex=get_start_vertex(
+                        get_first_line(sub_graph_path)),
                     max_vertex=get_start_vertex(get_last_line(sub_graph_path))
                 )
             }
@@ -101,7 +104,8 @@ class Master:
 
     @staticmethod
     def make_sub_graphs_bidirectional(graph_path: str, workers: dict):
-        combined_meta_data = CombinedMetaData([worker['meta-data'] for worker in workers.values()])
+        combined_meta_data = CombinedMetaData(
+            [worker['meta-data'] for worker in workers.values()])
 
         f = open(graph_path, "r")
         for edge in read_as_reversed_edges(f):
@@ -112,7 +116,8 @@ class Master:
             elif start_vertex > combined_meta_data.top_layer.max_vertex:
                 worker_id = combined_meta_data.top_layer.worker_id
             else:
-                worker_id = combined_meta_data.get_worker_id_that_has_vertex(start_vertex)
+                worker_id = combined_meta_data.get_worker_id_that_has_vertex(
+                    start_vertex)
 
             append_edge(
                 path=workers[worker_id]['sub-graph-path'],
@@ -147,12 +152,12 @@ class Master:
         for worker_id in workers.keys():
             workers[worker_id]['last-alive'] = None
             workers[worker_id]['process'] = command_line.setup_worker(
-                    self.worker_script,
-                    worker_id,
-                    self.hostname,
-                    self.port,
-                    workers[worker_id]['sub-graph-path']
-                )
+                self.worker_script,
+                worker_id,
+                self.hostname,
+                self.port,
+                workers[worker_id]['sub-graph-path']
+            )
 
         return workers
 
@@ -191,6 +196,9 @@ class Master:
     def handle_debug(self, worker_id, debug_message):
         print(f"Worker {worker_id}: {debug_message}")
 
+    def handle_job_complete(self, worker_id):
+        print(f"Worker {worker_id}: job complete")
+
     def message_in_queue(self) -> bool:
         """
         :return: Boolean whether there are any messages in the queue
@@ -210,16 +218,19 @@ class Master:
             self.handle_register(*args)
 
     def send_meta_data_to_workers(self):
-        meta_data_message = message.write_meta_data([worker['meta-data'].to_dict() for worker in self.workers.values()])
+        meta_data_message = message.write_meta_data(
+            [worker['meta-data'].to_dict() for worker in self.workers.values()])
 
         for worker_id, worker in self.workers.items():
-            sockets.send_message(*worker['meta-data'].get_connection_info(), meta_data_message)
+            sockets.send_message(
+                *worker['meta-data'].get_connection_info(), meta_data_message)
 
     def run(self):
         """
         Runs the master
         """
 
+        print('Run master \n\n')
         while True:
             sleep(0.1)
             while self.message_in_queue():

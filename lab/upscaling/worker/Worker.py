@@ -8,7 +8,8 @@ class Worker(WorkerInterface):
         graph = Graph()
         graph.load_from_file(self.graph)
         diff = Algorithm.DegreeDistrubution().run(graph)
-        # TODO send confirmation to master, then ask for permission to write
         prefix, ext = self.graph.split('.')
         filename = f'{prefix}-par-{self.worker_id}{ext}'
         diff.save_to_file(filename)
+        print('worker done, id:', self.worker_id)
+        self.send_job_complete()

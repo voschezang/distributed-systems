@@ -6,19 +6,26 @@ ALIVE = 200
 REGISTER = 201
 META_DATA = 202
 DEBUG = 203
+JOB_COMPLETE = 204
 
 
 def write(status: int, body: dict or list):
     return json.dumps({'status': status, 'body': body}).encode()
 
 
-def write_alive(worker_id: int):
+def no_content(status: int, worker_id: int):
     return write(
-        status=ALIVE,
-        body={
-            'worker_id': worker_id
-        }
+        status=status,
+        body={'worker_id': worker_id}
     )
+
+
+def write_alive(worker_id: int):
+    return no_content(ALIVE, worker_id)
+
+
+def write_job_complete(worker_id: int):
+    return no_content(JOB_COMPLETE, worker_id)
 
 
 def write_register(worker_id: int, host: str, port: int):
@@ -68,9 +75,14 @@ def read_debug(body: dict):
     return DEBUG, body['worker_id'], body['debug_message']
 
 
+def read_job_complete(body: dict):
+    return JOB_COMPLETE, body['worker_id']
+
+
 MESSAGE_INTERFACE = {
     ALIVE: read_alive,
     REGISTER: read_register,
     META_DATA: read_meta_data,
-    DEBUG: read_debug
+    DEBUG: read_debug,
+    JOB_COMPLETE: read_job_complete
 }
