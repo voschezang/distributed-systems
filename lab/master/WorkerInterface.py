@@ -20,17 +20,20 @@ class Node:
         """
         Sends a message to the master
         """
-        while True:
+        for i in range(1000):
             try:
                 sockets.send_message(
                     self.master_host, self.master_port, message_to_send)
-                break
+                return
             except ConnectionResetError:
                 # Possibly:  [Errno 54] Connection reset by peer
                 # Try again until success
                 pass
             except Exception as e:
                 print('Send msg to master error \n\t', e)
+
+        raise Exception(
+            f'Failed to connect to master. worker_id: {self.worker_id}')
 
 
 class HearbeatDaemon(Node):
