@@ -178,7 +178,7 @@ class Master:
         """
 
         self.workers[worker_id]['last-alive'] = time()
-        print(f"Worker {worker_id} is still alive")
+        #print(f"Worker {worker_id} is still alive")
 
     def handle_register(self, worker_id, host, port):
         """

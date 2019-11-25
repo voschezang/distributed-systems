@@ -79,7 +79,7 @@ class WorkerInterface(Node):
 
         self.init_hearbeat_daemon(wait_time=1)
 
-        self.run()
+        # self.run()
 
     def run(self):
         raise NotImplementedError()

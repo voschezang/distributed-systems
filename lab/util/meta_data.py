@@ -15,6 +15,7 @@ class MetaData:
         return self.host, self.port
 
     def has_vertex(self, vertex: int) -> bool:
+        print(self.min_vertex, vertex, self.max_vertex)
         return self.min_vertex <= vertex <= self.max_vertex
 
     def to_dict(self) -> dict:
