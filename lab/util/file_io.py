@@ -1,6 +1,7 @@
 import subprocess
 from typing import TextIO
 from math import floor
+import pandas as pd
 
 
 def get_number_of_lines(path: str) -> int:
@@ -148,6 +149,21 @@ def read_file(path):
     return lines
 
 
+def parse_to_edge(line):
+    edge = line.rstrip().split(" ")
+
+    return [int(edge[0]), int(edge[1])]
+
+
+def to_int_edge_list(data) -> [[int, int]]:
+    edges = []
+
+    for line in data:
+        edges.append(parse_to_edge(line))
+
+    return edges
+
+
 def write_to_file(path, data):
     f = open(path, "w")
     f.writelines(data)
@@ -155,7 +171,7 @@ def write_to_file(path, data):
 
 
 def sort_file(path):
-    lines = read_file(path)
-    lines.sort()
-    write_to_file(path, lines)
+    edges = pd.DataFrame(to_int_edge_list(read_file(path)), columns=['start', 'end'])
+    edges = edges.sort_values(['start', 'end'])
+    edges.to_csv(path, sep=" ", header=False, index=False)
 

@@ -81,7 +81,7 @@ class Master:
 
         return workers
 
-    def split_graph(self, graph_path):
+    def split_graph(self, graph_path) -> dict:
         workers = {}
 
         f = open(graph_path, "r")
