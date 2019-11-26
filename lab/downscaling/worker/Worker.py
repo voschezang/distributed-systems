@@ -1,4 +1,4 @@
-from lab.util.graph import *
+from lab.util.distributed_graph import *
 import numpy as np
 from lab.util import message
 import time
@@ -10,7 +10,7 @@ class Worker(WorkerInterface):
         super().__init__(worker_id, master_host, master_port, graph_path)
         min_vertex = self.meta_data_of_all_workers.combined_meta_data[self.worker_id].min_vertex
         max_vertex = self.meta_data_of_all_workers.combined_meta_data[self.worker_id].max_vertex
-        self.g = graph_from_file(graph_path, min_vertex, max_vertex, self.meta_data_of_all_workers)
+        self.g = distributed_graph_from_file(graph_path, min_vertex, max_vertex, self.meta_data_of_all_workers)
         self.run()
 
     def run(self):
@@ -32,28 +32,33 @@ class Worker(WorkerInterface):
             pass
 
     def random_walk(self, scale):
-        cur_vertex = self.g.vertices[np.random.choice(len(self.g.vertices))]
+        vertices = [vertex for vertex in self.g.vertices if isinstance(vertex, Vertex)]  # filter GhostVertices
+        cur_vertex = vertices[np.random.choice(len(vertices))]
         vertices = {cur_vertex}
-        edges = set()
-        goal_size = int(scale * self.g.n_edges)  # TODO: moet van totale aantal edges zijn, niet van zijn eigen.
+        #edges = set()
+        edges = {}
+        goal_size = int(scale * self.meta_data_of_all_workers.combined_number_of_edges /
+                        len(self.meta_data_of_all_workers.combined_meta_data))
 
         while len(edges) < 100:  # int(44000/3):  # TODO: niet hardcoded
+            #  print(self.g.edges)
             new_vertex = self.g.edges[cur_vertex][np.random.choice(len(self.g.edges[cur_vertex]))]
-            if self.g.min_vertex <= new_vertex <= self.g.max_vertex:
+            if self.g.min_vertex <= new_vertex.label <= self.g.max_vertex:
                 # print(new_vertex)
                 vertices.add(new_vertex)
-                if (cur_vertex, new_vertex) not in edges and (new_vertex, cur_vertex) not in edges:  # set filtert blijbkaar niet automatisch?
-                    edges.add((cur_vertex, new_vertex))
+                cur_edge = Edge(cur_vertex, new_vertex)
+                if cur_edge not in edges:
+                    #edges.add((cur_vertex, new_vertex))
+                    edges[cur_edge] = True
                     cur_vertex = new_vertex
 
             else:
                 pass
-            # break
         new_graph = Graph()
         for v in vertices:
             new_graph.addVertex(v.label)
         for e in edges:
-            new_graph.addEdge(e[0], e[1])
+            new_graph.addEdge(e.vertex_1, e.vertex_2, False)
         print(self.g, new_graph)
 
     # def random_walk(self, scale):

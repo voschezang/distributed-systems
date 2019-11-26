@@ -19,15 +19,6 @@ class Vertex(int):
     def label(self):
         return int(self)
 
-class GhostVertex:
-    def __init__(self, label, combined_meta_data):
-        print(label, combined_meta_data)
-        self.worker_id = combined_meta_data.get_worker_id_that_has_vertex(label) # Gaat fout hier door foutief gesorteerde file
-        print(self.worker_id)
-        self.host = combined_meta_data.get_all_meta_data[self.worker_id].host
-        self.port = combined_meta_data.get_all_meta_data[self.worker_id].port
-
-
 
 class Edge:
     def __init__(self, vertex_1, vertex_2):
@@ -42,14 +33,11 @@ class Edge:
 
 
 class Graph:
-    def __init__(self, min_vertex=0, max_vertex=float("inf"), combined_meta_data=""):
+    def __init__(self):
         self.vertices_dict = {}  # {vertex.label: vertex}
         self.vertices = []  # list(Vertex)
         self.edges = {}  # {Vertex: list(Vertex)}
         self.id = 0
-        self.min_vertex = min_vertex
-        self.max_vertex = max_vertex
-        self.combined_meta_data = combined_meta_data
 
     @property
     def n_vertices(self):
@@ -62,7 +50,6 @@ class Graph:
     def addEdgeSet(self, edgeSet):
         number_of_edges = len(edgeSet)
         print("loading {} edges...".format(number_of_edges))
-        not_added_count = 0
         for edge in edgeSet:
             v_1, v_2 = edge
             if not v_1 in self.vertices:
@@ -71,12 +58,7 @@ class Graph:
                 vertex_2 = self.addVertex(v_2)
             vertex_1 = self.vertices_dict[v_1]
             vertex_2 = self.vertices_dict[v_2]
-            try:
-                self.addEdge(vertex_1, vertex_2)
-            except ValueError:
-                not_added_count += 1
-                #print("Edge (%s, %s) already exists, not added" % (vertex_1, vertex_2))
-        #print(not_added_count)
+            self.addEdge(vertex_1, vertex_2)
 
     def addEdge(self, vertex_1: Vertex, vertex_2: Vertex, bidirectional=True):
         if not vertex_1 in self.vertices:
@@ -97,10 +79,7 @@ class Graph:
         return e
 
     def addVertex(self, label) -> Vertex:
-        if self.min_vertex <= label <= self.max_vertex:
-            v = Vertex(label)
-        else:
-            v = GhostVertex(label, self.combined_meta_data)
+        v = Vertex(label)
         self.vertices.append(v)
         self.vertices_dict[label] = v
         self.edges[v] = []
@@ -196,13 +175,13 @@ class Graph:
         return hash(str(self.edges))
 
 
-def graph_from_file(filename='graph.txt', min_vertex=0, max_vertex=float("inf"), combined_meta_data=""):
+def graph_from_file(filename='graph.txt'):
     edge_set = []
     with open(filename) as file:
         for line in file:
             v_1, v_2 = line[:-1].split(" ")
             edge_set.append([int(v_1), int(v_2)])
-    graph = Graph(min_vertex, max_vertex, combined_meta_data)
+    graph = Graph()
     graph.addEdgeSet(edge_set)
 
     return graph
