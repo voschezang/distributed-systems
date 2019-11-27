@@ -1,12 +1,13 @@
 import json
 
-
 # Status Codes
 ALIVE = 200
 REGISTER = 201
 META_DATA = 202
 DEBUG = 203
-JOB_COMPLETE = 204
+RANDOM_WALKER = 204
+PROGRESS = 205
+JOB_COMPLETE = 206
 
 
 def write(status: int, body: dict or list):
@@ -22,10 +23,6 @@ def no_content(status: int, worker_id: int):
 
 def write_alive(worker_id: int):
     return no_content(ALIVE, worker_id)
-
-
-def write_job_complete(worker_id: int):
-    return no_content(JOB_COMPLETE, worker_id)
 
 
 def write_register(worker_id: int, host: str, port: int):
@@ -53,6 +50,35 @@ def write_debug(worker_id: int, debug_message: str):
     )
 
 
+def write_random_walker(vertex_label: int):
+    return write(
+        status=RANDOM_WALKER,
+        body={
+            'vertex_label': vertex_label
+        }
+    )
+
+
+def write_progress(worker_id: int, number_of_edges: int):
+    return write(
+        status=PROGRESS,
+        body={
+            'worker_id': worker_id,
+            'number_of_edges': number_of_edges
+        }
+    )
+
+
+def write_job_complete(worker_id=None, path=None):
+    return write(
+        status=JOB_COMPLETE,
+        body={
+            'worker_id': worker_id,
+            'path': path
+        }
+    )
+
+
 def read(message: bytes):
     content = json.loads(message.decode())
 
@@ -75,8 +101,16 @@ def read_debug(body: dict):
     return DEBUG, body['worker_id'], body['debug_message']
 
 
-def read_job_complete(body: dict):
-    return JOB_COMPLETE, body['worker_id']
+def read_random_walker(body: dict):
+    return RANDOM_WALKER, body['vertex_label']
+
+
+def read_progress(body: dict):
+    return PROGRESS, body['worker_id'], body['number_of_edges']
+
+
+def read_job_complete(body):
+    return JOB_COMPLETE, body['worker_id'], body['path']
 
 
 MESSAGE_INTERFACE = {
@@ -84,5 +118,7 @@ MESSAGE_INTERFACE = {
     REGISTER: read_register,
     META_DATA: read_meta_data,
     DEBUG: read_debug,
+    RANDOM_WALKER: read_random_walker,
+    PROGRESS: read_progress,
     JOB_COMPLETE: read_job_complete
 }

@@ -4,8 +4,8 @@ from lab.util.validation import (
     assert_nonnegative_int,
     assert_positive_int,
     assert_host,
-    assert_path)
-from lab.downscaling.worker.DummyWorker import DummyWorker
+    assert_file)
+from lab.downscaling.worker.Worker import Worker
 
 
 def run(worker_id: int, master_host: str, master_port: int, graph_path: str):
@@ -18,7 +18,7 @@ def run(worker_id: int, master_host: str, master_port: int, graph_path: str):
     :param graph_path: The path to the graph to downscale
     """
 
-    worker = DummyWorker(worker_id, master_host, master_port, graph_path)
+    worker = Worker(worker_id, master_host, master_port, graph_path)
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
         worker_id = get_arg("--worker-id", assert_nonnegative_int)
         master_host = get_arg("--master-host", assert_host)
         master_port = get_arg("--master-port", assert_positive_int)
-        graph_path = get_arg("--graph", assert_path)
+        graph_path = get_arg("--graph", assert_file)
     except Exception as e:
         print_error(e)
         print_error(

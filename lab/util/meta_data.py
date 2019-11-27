@@ -1,3 +1,6 @@
+from typing import List
+
+
 class MetaData:
     def __init__(self, worker_id: int, number_of_edges: int, min_vertex: int, max_vertex: int, host: str = None, port: str = None):
         self.worker_id = worker_id
@@ -29,18 +32,27 @@ class MetaData:
 
 
 class CombinedMetaData:
-    def __init__(self, combined_meta_data: [MetaData]):
-        self.combined_meta_data = combined_meta_data
+    def __init__(self, all_meta_data: List[MetaData]):
+        self.combined_meta_data = self.create_combined_meta_data(all_meta_data)
         self.top_layer = self.find_top_layer
         self.bottom_layer = self.find_bottom_layer
         self.combined_number_of_edges = self.get_combined_number_of_edges
+
+    @staticmethod
+    def create_combined_meta_data(all_meta_data: List[MetaData]) -> dict:
+        combined_meta_data = {}
+
+        for meta_data in all_meta_data:
+            combined_meta_data[meta_data.worker_id] = meta_data
+
+        return combined_meta_data
 
     @property
     def find_top_layer(self) -> MetaData:
         top_layer = None
         max_vertex = None
 
-        for meta_data in self.combined_meta_data:
+        for meta_data in self.combined_meta_data.values():
             if max_vertex is None or meta_data.max_vertex > max_vertex:
                 top_layer = meta_data
                 max_vertex = meta_data.max_vertex
@@ -52,7 +64,7 @@ class CombinedMetaData:
         bottom_layer = None
         min_vertex = None
 
-        for meta_data in self.combined_meta_data:
+        for meta_data in self.combined_meta_data.values():
             if min_vertex is None or meta_data.min_vertex < min_vertex:
                 bottom_layer = meta_data
                 min_vertex = meta_data.min_vertex
@@ -61,17 +73,20 @@ class CombinedMetaData:
 
     @property
     def get_combined_number_of_edges(self):
-        return sum([meta_data.number_of_edges for meta_data in self.combined_meta_data])
+        return sum([meta_data.number_of_edges for meta_data in self.combined_meta_data.values()])
+
+    def __getitem__(self, worker_id) -> MetaData:
+        return self.combined_meta_data[worker_id]
 
     def get_worker_id_that_has_vertex(self, vertex: int):
-        for meta_data in self.combined_meta_data:
+        for worker_id, meta_data in self.combined_meta_data.items():
             if meta_data.has_vertex(vertex):
-                return meta_data.worker_id
+                return worker_id
 
         raise Exception("Vertex could not be matched to any of the workers")
 
     def get_connection_that_has_vertex(self, vertex: int):
-        for meta_data in self.combined_meta_data:
+        for meta_data in self.combined_meta_data.values():
             if meta_data.has_vertex(vertex):
                 return meta_data.get_connection_info()
 

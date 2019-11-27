@@ -67,7 +67,7 @@ class DegreeDistrubution(Algorithm):
         new_vertex = new_graph.addVertex(new_vertex_label)
         for new_neighbour in new_neighbours:
             # TODO ignore duplicate edges and reflexive edges?
-            new_graph.addEdge(new_vertex, new_neighbour)
+            new_graph.add_edge(new_vertex, new_neighbour)
             # adding bidirectional edges biasses the graph
             # counter this by removing a random edge
             collateral_vertex = np.random.choice(

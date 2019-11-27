@@ -3,8 +3,7 @@ from lab.util.output import print_error
 from lab.util.validation import (
     assert_nonnegative_int,
     assert_positive_int,
-    assert_host,
-    assert_path)
+    assert_file)
 from lab.upscaling.worker.Worker import Worker
 from lab.upscaling.worker.Algorithm import Algorithm
 
@@ -32,7 +31,7 @@ def main():
         worker_id = get_arg("--worker-id", assert_nonnegative_int)
         # master_host = get_arg("--master-host", assert_host)
         master_port = get_arg("--master-port", assert_positive_int)
-        graph_path = get_arg("--graph", assert_path)
+        graph_path = get_arg("--graph", assert_file)
     except Exception as e:
         print_error(e)
         print_error(

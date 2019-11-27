@@ -47,7 +47,7 @@ def assert_positive_int(name: str, value: str) -> int:
     return int(value)
 
 
-def assert_path(name: str, value: str) -> str:
+def assert_file(name: str, value: str) -> str:
     """
     Makes sure the value is a path to an existing file, otherwise raises AssertionError
 
@@ -56,6 +56,22 @@ def assert_path(name: str, value: str) -> str:
     :return: Value as string
     """
     if not (os.path.exists(value) and os.path.isfile(value)):
+        raise AssertionError("Invalid file for {}: `{}`".format(name, value))
+
+    return value
+
+
+def assert_path(name: str, value: str) -> str:
+    """
+    Makes sure the value is a path to an existing file, otherwise raises AssertionError
+
+    :param name: Argument name
+    :param value: Value
+    :return: Value as string
+    """
+    end_path_index = value.rindex("/")
+
+    if not os.path.exists(value[:end_path_index]):
         raise AssertionError("Invalid path for {}: `{}`".format(name, value))
 
     return value
@@ -73,6 +89,18 @@ def assert_host(name: str, value: str) -> str:
         raise AssertionError("Invalid path for {}: `{}`".format(name, value))
 
     return value
+
+
+def assert_scale(name: str, value: str) -> float:
+    try:
+        scale = float(value)
+    except ValueError:
+        raise AssertionError(f"Invalid value for {name}: `{value}`")
+
+    if scale <= 0.0 or scale >= 1.0:
+        raise AssertionError(f"The value should be between 0 and 1 for {name}: `{value}`")
+
+    return scale
 
 
 def no_assertion(name: str, value: str) -> str:

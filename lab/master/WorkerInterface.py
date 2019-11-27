@@ -35,6 +35,10 @@ class Node:
         raise Exception(
             f'Failed to connect to master. worker_id: {self.worker_id}')
 
+    @staticmethod
+    def send_message_to_node(host, port, message_to_send: bytes):
+        sockets.send_message(host, port, message_to_send)
+
 
 class HearbeatDaemon(Node):
     """ Daemon process that periodically pings Master to indicate the
@@ -59,7 +63,7 @@ class WorkerInterface(Node):
     def __init__(self, worker_id: int, master_host: str, master_port: int,
                  graph_path: str):
         super().__init__(worker_id, master_host, master_port)
-        self.graph = graph_path
+        self.graph_path = graph_path
 
         # Create queue
         self.server_queue = Queue()
@@ -75,11 +79,9 @@ class WorkerInterface(Node):
         self.register()
 
         # Wait for the meta data of the other workers
-        self.meta_data_of_all_workers = self.receive_meta_data()
+        self.combined_meta_data: CombinedMetaData = self.receive_meta_data()
 
         self.init_hearbeat_daemon(wait_time=1)
-
-        self.run()
 
     def run(self):
         raise NotImplementedError()
@@ -132,3 +134,10 @@ class WorkerInterface(Node):
         self.hearbeat_daemon = Process(target=HearbeatDaemon, args=(
             self.worker_id, self.master_host, self.master_port, wait_time))
         self.hearbeat_daemon.start()
+
+    def message_in_queue(self) -> bool:
+        """
+        :return: Boolean whether there are any messages in the queue
+        """
+
+        return not self.server_queue.empty()
