@@ -5,7 +5,6 @@ from lab.util.validation import (
     assert_positive_int,
     assert_host,
     assert_path)
-from lab.downscaling.worker.DummyWorker import DummyWorker
 from lab.downscaling.worker.Worker import Worker
 
 

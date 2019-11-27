@@ -59,7 +59,7 @@ class WorkerInterface(Node):
     def __init__(self, worker_id: int, master_host: str, master_port: int,
                  graph_path: str):
         super().__init__(worker_id, master_host, master_port)
-        self.graph = graph_path
+        self.graph_path = graph_path
 
         # Create queue
         self.server_queue = Queue()
@@ -78,8 +78,6 @@ class WorkerInterface(Node):
         self.meta_data_of_all_workers = self.receive_meta_data()
 
         self.init_hearbeat_daemon(wait_time=1)
-
-        # self.run()
 
     def run(self):
         raise NotImplementedError()
