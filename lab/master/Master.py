@@ -81,7 +81,8 @@ class Master:
                     'meta-data': MetaData(
                         worker_id=worker_id,
                         number_of_edges=get_number_of_lines(graph_path),
-                        min_vertex=get_start_vertex(get_first_line(graph_path)),
+                        min_vertex=get_start_vertex(
+                            get_first_line(graph_path)),
                         max_vertex=get_start_vertex(get_last_line(graph_path))
                     )
                 }
@@ -100,7 +101,8 @@ class Master:
                 'meta-data': MetaData(
                     worker_id=worker_id,
                     number_of_edges=get_number_of_lines(sub_graph_path),
-                    min_vertex=get_start_vertex(get_first_line(sub_graph_path)),
+                    min_vertex=get_start_vertex(
+                        get_first_line(sub_graph_path)),
                     max_vertex=get_start_vertex(get_last_line(sub_graph_path))
                 )
             }
@@ -110,7 +112,8 @@ class Master:
 
     @staticmethod
     def make_sub_graphs_bidirectional(graph_path: str, workers: dict):
-        combined_meta_data = CombinedMetaData([worker['meta-data'] for worker in workers.values()])
+        combined_meta_data = CombinedMetaData(
+            [worker['meta-data'] for worker in workers.values()])
 
         f = open(graph_path, "r")
         for edge in read_as_reversed_edges(f):
@@ -121,7 +124,8 @@ class Master:
             elif start_vertex > combined_meta_data.top_layer.max_vertex:
                 worker_id = combined_meta_data.top_layer.worker_id
             else:
-                worker_id = combined_meta_data.get_worker_id_that_has_vertex(start_vertex)
+                worker_id = combined_meta_data.get_worker_id_that_has_vertex(
+                    start_vertex)
 
             append_edge(
                 path=workers[worker_id]['sub-graph-path'],
@@ -230,11 +234,13 @@ class Master:
 
     def send_message_to_all_workers(self, message_to_send):
         for worker_id, worker in self.workers.items():
-            sockets.send_message(*worker['meta-data'].get_connection_info(), message_to_send)
+            sockets.send_message(
+                *worker['meta-data'].get_connection_info(), message_to_send)
 
     def send_meta_data_to_workers(self):
         self.send_message_to_all_workers(
-            message.write_meta_data([worker['meta-data'].to_dict() for worker in self.workers.values()])
+            message.write_meta_data([worker['meta-data'].to_dict()
+                                     for worker in self.workers.values()])
         )
 
     def total_progress(self):
@@ -246,11 +252,7 @@ class Master:
         stdout.flush()
 
     def all_workers_done(self):
-        for worker in self.workers.values():
-            if not worker['job-complete']:
-                return False
-
-        return  True
+        return all((worker['job-complete'] for worker in self.workers.values()))
 
     def wait_for_workers_to_complete(self):
         while not self.all_workers_done():
@@ -287,4 +289,3 @@ class Master:
         graph = self.create_graph()
         print(graph)
         graph.write_to_file(self.output_file)
-
