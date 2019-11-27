@@ -35,6 +35,10 @@ class Node:
         raise Exception(
             f'Failed to connect to master. worker_id: {self.worker_id}')
 
+    @staticmethod
+    def send_message_to_node(host, port, message_to_send: bytes):
+        sockets.send_message(host, port, message_to_send)
+
 
 class HearbeatDaemon(Node):
     """ Daemon process that periodically pings Master to indicate the
@@ -130,3 +134,10 @@ class WorkerInterface(Node):
         self.hearbeat_daemon = Process(target=HearbeatDaemon, args=(
             self.worker_id, self.master_host, self.master_port, wait_time))
         self.hearbeat_daemon.start()
+
+    def message_in_queue(self) -> bool:
+        """
+        :return: Boolean whether there are any messages in the queue
+        """
+
+        return not self.server_queue.empty()

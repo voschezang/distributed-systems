@@ -139,3 +139,5 @@ gen
 *.txt
 
 *.pkl
+
+output/

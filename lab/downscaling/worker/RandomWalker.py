@@ -1,4 +1,4 @@
-from lab.util.distributed_graph_jens import Vertex, ForeignVertex, Edge
+from lab.util.distributed_graph import Vertex, ForeignVertex, Edge
 from numpy.random import randint
 
 
