@@ -75,7 +75,7 @@ class WorkerInterface(Node):
         self.register()
 
         # Wait for the meta data of the other workers
-        self.meta_data_of_all_workers = self.receive_meta_data()
+        self.combined_meta_data: CombinedMetaData = self.receive_meta_data()
 
         self.init_hearbeat_daemon(wait_time=1)
 

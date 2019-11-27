@@ -75,7 +75,7 @@ class CombinedMetaData:
     def get_combined_number_of_edges(self):
         return sum([meta_data.number_of_edges for meta_data in self.combined_meta_data.values()])
 
-    def __getitem__(self, worker_id):
+    def __getitem__(self, worker_id) -> MetaData:
         return self.combined_meta_data[worker_id]
 
     def get_worker_id_that_has_vertex(self, vertex: int):

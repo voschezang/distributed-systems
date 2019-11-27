@@ -16,6 +16,9 @@ class ForeignVertex:
     def __hash__(self):
         return hash(str(self))
 
+    def __repr__(self):
+        return str(self)
+
 
 class Vertex:
     def __init__(self, label: int):
@@ -36,14 +39,20 @@ class Vertex:
     def __hash__(self):
         return hash(str(self))
 
+    def __repr__(self):
+        return str(self)
+
 
 class Edge:
-    def __init__(self, vertex_1: Vertex, vertex_2: Vertex or ForeignVertex):
-        self.vertex_1 = vertex_1
-        self.vertex_2 = vertex_2
+    def __init__(self, from_vertex: Vertex, to_vertex: Vertex or ForeignVertex):
+        self.from_vertex = from_vertex
+        self.to_vertex = to_vertex
 
     def __str__(self):
-        return f"{str(self.vertex_1)} {str(self.vertex_2)}"
+        return f"{self.from_vertex} {self.to_vertex}"
+
+    def __repr__(self):
+        return str(self)
 
 
 class DistributedGraph:
