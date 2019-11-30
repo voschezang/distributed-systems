@@ -248,7 +248,8 @@ class Master:
 
     def print_progress(self):
         stdout.write('\r')
-        stdout.write(f"{self.total_progress() / self.goal_size * 100}%")
+        stdout.write(
+            f"{self.total_progress() / self.goal_size * 100:0.5f}% \t")
         stdout.flush()
 
     def all_workers_done(self):

@@ -26,8 +26,13 @@ class Client:
                     self.master_host, self.master_port, message_to_send)
                 return
             except ConnectionResetError:
-                # Possibly:  [Errno 54] Connection reset by peer
+                # Possibly: [Errno 54] Connection reset by peer
                 # Try again until success
+                # print('con er')
+                pass
+            except BrokenPipeError:
+                # Possibly: [Errno 32] Broken pipe
+                # print('broken pipe er')
                 pass
             except Exception as e:
                 print('Send msg to master error \n\t', e)
@@ -64,6 +69,8 @@ class WorkerInterface(Client):
                  graph_path: str):
         super().__init__(worker_id, master_host, master_port)
         self.graph_path = graph_path
+        self.terminate = False
+        self.message_interface = {}
 
         # Create queue
         self.server_queue = Queue()
@@ -85,6 +92,17 @@ class WorkerInterface(Client):
 
     def run(self):
         raise NotImplementedError()
+
+    def send_progress_message(self, *args):
+        raise NotImplementedError()
+
+    def handle_job_complete(self, *args):
+        self.terminate = True
+
+    def handle_queue(self):
+        while self.message_in_queue():
+            status, *args = self.get_message_from_queue()
+            self.message_interface[status](*args)
 
     def get_message_from_queue(self) -> [str]:
         """
