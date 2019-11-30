@@ -6,7 +6,7 @@ from lab.util.meta_data import MetaData, CombinedMetaData
 from lab.util.server import Server
 
 
-class Node:
+class Client:
     """ Worker node representing a process that may communicate with master and
     other workers, superclass for the actual workers.
     """
@@ -40,7 +40,7 @@ class Node:
         sockets.send_message(host, port, message_to_send)
 
 
-class HearbeatDaemon(Node):
+class HearbeatDaemon(Client):
     """ Daemon process that periodically pings Master to indicate the
     corresponding worker is alive.
     """
@@ -56,7 +56,7 @@ class HearbeatDaemon(Node):
             time.sleep(wait_time)
 
 
-class WorkerInterface(Node):
+class WorkerInterface(Client):
     """ Actually an abstract base class
     """
 
