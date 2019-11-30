@@ -1,6 +1,6 @@
 from lab.util.argument_parser import get_arg
 from lab.util.output import print_error
-from lab.util.validation import assert_bool, assert_nonnegative_int,  assert_path, assert_file, assert_scale
+from lab.util.validation import assert_bool, assert_nonnegative_int,  assert_path, assert_file, assert_pos_float
 from lab.master.Master import Master
 
 
@@ -16,7 +16,8 @@ def run(n_workers: int, graph_path: str, worker_script: str, split_graph: bool, 
     :param scale: The scale to which the graph should be downsized
     """
 
-    master = Master(n_workers, graph_path, worker_script, split_graph, output_file, scale)
+    master = Master(n_workers, graph_path, worker_script,
+                    split_graph, output_file, scale)
 
 
 def main():
@@ -29,8 +30,9 @@ def main():
         graph_path = get_arg("--graph", assert_file)
         worker_script = get_arg("--worker-script", assert_file)
         split_graph = get_arg("--split_graph", assert_bool, default=True)
-        output_file = get_arg("--output-file", assert_path)
-        scale = get_arg("--scale", assert_scale)
+        output_file = get_arg("--output-file", assert_path,
+                              default='data/graph_generated.txt')
+        scale = get_arg("--scale", assert_pos_float)
     except Exception as e:
         print_error(e)
         print_error(

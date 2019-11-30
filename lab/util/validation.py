@@ -47,6 +47,26 @@ def assert_positive_int(name: str, value: str) -> int:
     return int(value)
 
 
+def assert_pos_float(name: str, value: str) -> int:
+    """
+    Makes sure the value is a positive float, otherwise raises AssertionError
+
+    :param name: Argument name
+    :param value: Value
+    :return: Value as float
+    """
+    try:
+        value = float(value)
+    except ValueError:
+        raise AssertionError(f"Invalid value for {name}: `{value}`")
+
+    if value <= 0.0:
+        raise AssertionError(
+            f"The value should be between above zero, for {name}: `{value}`")
+
+    return value
+
+
 def assert_file(name: str, value: str) -> str:
     """
     Makes sure the value is a path to an existing file, otherwise raises AssertionError
@@ -91,14 +111,15 @@ def assert_host(name: str, value: str) -> str:
     return value
 
 
-def assert_scale(name: str, value: str) -> float:
+def assert_standard_scale(name: str, value: str) -> float:
     try:
         scale = float(value)
     except ValueError:
         raise AssertionError(f"Invalid value for {name}: `{value}`")
 
     if scale <= 0.0 or scale >= 1.0:
-        raise AssertionError(f"The value should be between 0 and 1 for {name}: `{value}`")
+        raise AssertionError(
+            f"The value should be between 0 and 1 for {name}: `{value}`")
 
     return scale
 
