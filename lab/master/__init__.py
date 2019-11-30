@@ -42,7 +42,7 @@ def main():
             "\t--worker-script: Python script for worker\n"
             "\t--split_graph: Flag to indicate to whether to split up the graph in smaller subgraphs or to copy the whole graph to every worker\n"
             "\t--output-file: File to save the downscaled graph in\n"
-            "\t--scale: The scale to which the graph should be downsized, should be a float between 0 and 1\n"
+            "\t--scale: The scale to which the graph should be up/down-sized, should be above zero\n"
         )
         return
 
