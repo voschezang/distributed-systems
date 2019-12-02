@@ -209,16 +209,15 @@ class Master(Server):
             status, *args = self.get_message_from_queue()
             self.handle_register(*args)
 
-    def send_message_to_all_workers(self, message_to_send):
-        # broadcast
+    def broadcast(self, message):
         for worker_id, worker in self.workers.items():
             sockets.send_message(
-                *worker['meta-data'].get_connection_info(), message_to_send)
+                *worker['meta-data'].get_connection_info(), message)
 
     def send_meta_data_to_workers(self):
-        self.send_message_to_all_workers(
-            message.write_meta_data([worker['meta-data'].to_dict()
-                                     for worker in self.workers.values()])
+        self.broadcast(message.write_meta_data(
+            [worker['meta-data'].to_dict()
+             for worker in self.workers.values()])
         )
 
     def total_progress(self):
@@ -255,8 +254,7 @@ class Master(Server):
             self.print_progress()
         print("\nJob complete")
 
-        self.send_message_to_all_workers(
-            message.write_job(message.FINISH_JOB))
+        self.broadcast(message.write_job(message.FINISH_JOB))
         self.wait_for_workers_to_complete()
         self.terminate_workers()
         self.server.terminate()
