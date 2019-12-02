@@ -1,6 +1,5 @@
 from lab.util import command_line, message, sockets
 from lab.util.file_io import read_in_chunks, write_chunk, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, append_edge, get_number_of_lines, sort_file
-# from multiprocessing import Process, Queue
 from lab.util.server import Server
 from time import time, sleep
 from lab.util.meta_data import MetaData, CombinedMetaData
@@ -211,6 +210,7 @@ class Master(Server):
             self.handle_register(*args)
 
     def send_message_to_all_workers(self, message_to_send):
+        # broadcast
         for worker_id, worker in self.workers.items():
             sockets.send_message(
                 *worker['meta-data'].get_connection_info(), message_to_send)
@@ -255,7 +255,8 @@ class Master(Server):
             self.print_progress()
         print("\nJob complete")
 
-        self.send_message_to_all_workers(message.write_job_complete())
+        self.send_message_to_all_workers(
+            message.write_job(message.FINISH_JOB))
         self.wait_for_workers_to_complete()
         self.terminate_workers()
         self.server.terminate()

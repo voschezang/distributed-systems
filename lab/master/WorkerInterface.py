@@ -83,7 +83,7 @@ class WorkerInterface(Client, Server):
     def send_progress_message(self, *args):
         raise NotImplementedError()
 
-    def handle_job_complete(self, *args):
+    def handle_finish_job(self, *args):
         self.terminate = True
 
     def receive_meta_data(self) -> CombinedMetaData:

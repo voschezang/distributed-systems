@@ -1,5 +1,6 @@
 import json
 
+
 # Status Codes
 ALIVE = 200
 REGISTER = 201
@@ -7,7 +8,8 @@ META_DATA = 202
 DEBUG = 203
 RANDOM_WALKER = 204
 PROGRESS = 205
-JOB_COMPLETE = 206
+FINISH_JOB = 206  # Master to Worker
+JOB_COMPLETE = 207  # Response, Worker to Master
 
 
 def write(status: int, body: dict or list):
@@ -69,9 +71,9 @@ def write_progress(worker_id: int, number_of_edges: int):
     )
 
 
-def write_job_complete(worker_id=None, path=None):
+def write_job(status=JOB_COMPLETE, worker_id=None, path=None):
     return write(
-        status=JOB_COMPLETE,
+        status=status,
         body={
             'worker_id': worker_id,
             'path': path
@@ -109,7 +111,11 @@ def read_progress(body: dict):
     return PROGRESS, body['worker_id'], body['number_of_edges']
 
 
-def read_job_complete(body):
+def read_finish_job(body):
+    return FINISH_JOB, body['worker_id'], body['path']
+
+
+def read_job_completed(body):
     return JOB_COMPLETE, body['worker_id'], body['path']
 
 
@@ -120,5 +126,6 @@ MESSAGE_INTERFACE = {
     DEBUG: read_debug,
     RANDOM_WALKER: read_random_walker,
     PROGRESS: read_progress,
-    JOB_COMPLETE: read_job_complete
+    FINISH_JOB: read_finish_job,
+    JOB_COMPLETE: read_job_completed
 }

@@ -1,5 +1,5 @@
 from lab.util.graph import Graph
-from lab.util import message, file_io
+from lab.util import message
 from lab.master.WorkerInterface import WorkerInterface
 from lab.upscaling.worker import Algorithm
 
@@ -8,7 +8,7 @@ class Worker(WorkerInterface):
     def __init__(self, worker_id: int, master_host: str, master_port: int, graph_path: str):
         super().__init__(worker_id, master_host, master_port, graph_path)
         self.message_interface = {
-            message.JOB_COMPLETE: self.handle_job_complete
+            message.FINISH_JOB: self.handle_finish_job
         }
         self.run()
 

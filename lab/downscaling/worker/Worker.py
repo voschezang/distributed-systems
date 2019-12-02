@@ -11,7 +11,7 @@ class Worker(WorkerInterface):
 
         self.message_interface = {
             message.RANDOM_WALKER: self.handle_random_walker,
-            message.JOB_COMPLETE: self.handle_job_complete
+            message.FINISH_JOB: self.handle_finish_job
         }
         self.graph = DistributedGraph(
             worker_id, self.combined_meta_data, graph_path)
@@ -34,14 +34,6 @@ class Worker(WorkerInterface):
         self.random_walkers.append(RandomWalker(
             self.graph.vertices[vertex_label]))
 
-    def handle_queue(self):
-        while self.message_in_queue():
-            status, *args = self.get_message_from_queue()
-            self.message_interface[status](*args)
-
-    def handle_job_complete(self, *args):
-        self.terminate = True
-
     def send_random_walker_message(self, vertex: ForeignVertex):
         self.send_message_to_node(
             vertex.host, vertex.port, message.write_random_walker(vertex.label))
@@ -52,7 +44,7 @@ class Worker(WorkerInterface):
 
     def send_job_complete(self, path):
         self.send_message_to_master(
-            message.write_job_complete(self.worker_id, path))
+            message.write_job(message.JOB_COMPLETE, self.worker_id, path))
 
     def run(self):
         """
