@@ -8,15 +8,17 @@ from lab.util.distributed_graph import DistributedGraph
 
 
 class Master(Server):
-    def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool, output_file: str, scale: float):
+    def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
+                 scale: float, method: str):
         super().__init__()
         self.worker_script = worker_script
         self.n_workers = n_workers
         self.output_file = output_file
+        self.method = method
         self.graph_path = graph_path
 
         # Split graph into sub graphs and send them to the workers
-        self.workers = self.create_workers(graph_path, split_graph)
+        self.workers = self.create_workers(graph_path, split_graph, scale)
 
         # Can be used to handle incoming messages from the server
         self.message_interface = {
@@ -141,7 +143,7 @@ class Master(Server):
                 max_vertex=get_start_vertex(get_last_line(sub_graph_path))
             )
 
-    def create_workers(self, graph_path, split_graph) -> dict:
+    def create_workers(self, graph_path, split_graph, scale) -> dict:
         """
         Creates `self.n_workers` workers
         :return: Dictionary containing info about each worker
@@ -158,7 +160,9 @@ class Master(Server):
                 worker_id,
                 self.hostname,
                 self.port,
-                workers[worker_id]['sub-graph-path']
+                workers[worker_id]['sub-graph-path'],
+                scale,
+                self.method
             )
 
         return workers
@@ -256,13 +260,14 @@ class Master(Server):
         Runs the master
         """
 
-        while self.total_progress() < self.goal_size:
-            sleep(0.1)
-            self.handle_queue()
-            self.print_progress()
-        print("\nJob complete")
+        if self.method == "random_walk":
+            while self.total_progress() < self.goal_size:
+                sleep(0.1)
+                self.handle_queue()
+                self.print_progress()
+            print("\nJob complete")
+            self.broadcast(message.write_job(message.FINISH_JOB))
 
-        self.broadcast(message.write_job(message.FINISH_JOB))
         self.wait_for_workers_to_complete()
         self.terminate_workers()
         self.server.terminate()

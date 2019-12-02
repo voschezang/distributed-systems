@@ -1,26 +1,38 @@
 from lab.master.WorkerInterface import WorkerInterface
-from lab.util.distributed_graph import DistributedGraph, ForeignVertex
+from lab.util.distributed_graph import DistributedGraph, ForeignVertex, Vertex, Edge
 from lab.downscaling.worker.RandomWalker import RandomWalker, ForeignVertexException
-from numpy.random import randint
+from numpy.random import randint, random
+from numpy import array
 from lab.util import message, file_io
 
 
 class Worker(WorkerInterface):
-    def __init__(self, worker_id: int, master_host: str, master_port: int, graph_path: str):
+    def __init__(self, worker_id: int, master_host: str, master_port: int, graph_path: str, scale: float, method: str):
         super().__init__(worker_id, master_host, master_port, graph_path)
 
         self.message_interface = {
             message.RANDOM_WALKER: self.handle_random_walker,
             message.FINISH_JOB: self.handle_finish_job
         }
-        self.graph = DistributedGraph(
-            worker_id, self.combined_meta_data, graph_path)
-        self.random_walkers = [
-            RandomWalker(self.get_random_vertex())
-        ]
-        self.collected_edges = {}
 
-        self.run()
+        if method == "random_edge":
+            self.scale = scale
+            self.edges = []
+            with open(graph_path) as file:
+                for line in file:
+                    vertex1_label, vertex2_label = file_io.parse_to_edge(line)
+                    self.edges.append(Edge(Vertex(vertex1_label), Vertex(vertex2_label)))
+            self.edges = array(self.edges)
+            self.run_random_edge()
+        elif method == "random_walk":
+            self.graph = DistributedGraph(
+                worker_id, self.combined_meta_data, graph_path)
+            self.random_walkers = [
+                RandomWalker(self.get_random_vertex())
+            ]
+            self.collected_edges = {}
+
+            self.run_random_walk()
 
     def get_random_vertex(self):
         return self.graph.vertices[
@@ -46,7 +58,20 @@ class Worker(WorkerInterface):
         self.send_message_to_master(
             message.write_job(message.JOB_COMPLETE, self.worker_id, path))
 
-    def run(self):
+    def run_random_edge(self):
+        """
+        Runs the worker
+        """
+        self.collected_edges = self.edges[random(len(self.edges)) < self.scale]
+        output_file_path = f"/tmp/downscaled_sub_graph_{self.worker_id}.txt"
+        file_io.write_to_file(
+            path=output_file_path,
+            data=[str(edge) + '\n' for edge in self.collected_edges]
+        )
+        file_io.sort_file(output_file_path)
+        self.send_job_complete(output_file_path)
+
+    def run_random_walk(self):
         """
         Runs the worker
         """

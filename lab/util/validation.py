@@ -96,6 +96,11 @@ def assert_path(name: str, value: str) -> str:
 
     return value
 
+def assert_method(name: str, value: str) -> str:
+    if value == "random_walk" or value == "random_edge":
+        return value
+    else:
+        raise AssertionError("Invalid method for {}: `{}`".format(name, value))
 
 def assert_host(name: str, value: str) -> str:
     """

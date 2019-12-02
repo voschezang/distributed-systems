@@ -1,6 +1,6 @@
 from lab.util.argument_parser import get_arg
 from lab.util.output import print_error
-from lab.util.validation import assert_bool, assert_nonnegative_int,  assert_path, assert_file, assert_pos_float, assert_master_type
+from lab.util.validation import assert_bool, assert_nonnegative_int,  assert_path, assert_file, assert_pos_float, assert_master_type, assert_method
 
 
 def main():
@@ -17,6 +17,7 @@ def main():
         output_file = get_arg("--output-file", assert_path,
                               default='data/graph_generated.txt')
         scale = get_arg("--scale", assert_pos_float)
+        method = get_arg("--method", assert_method)
     except Exception as e:
         print_error(e)
         print_error(
@@ -27,12 +28,13 @@ def main():
             "\t--split_graph: Flag to indicate to whether to split up the graph in smaller subgraphs or to copy the whole graph to every worker\n"
             "\t--output-file: File to save the scaled graph in\n"
             "\t--scale: The scale to which the graph should be up/down-sized, should be above zero\n"
+            "\t--method: The method used for downscaling, `random_walk` or `random_edge`\n"
         )
         return
 
     # by default, start lab.master.Master.Master
     master_func(n_workers, graph_path, worker_script,
-                split_graph, output_file, scale)
+                split_graph, output_file, scale, method)
 
 
 if __name__ == '__main__':
