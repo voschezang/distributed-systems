@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 import time
 
 from lab.util import sockets, message
@@ -28,11 +28,9 @@ class Client:
             except ConnectionResetError:
                 # Possibly: [Errno 54] Connection reset by peer
                 # Try again until success
-                # print('con er')
                 pass
             except BrokenPipeError:
                 # Possibly: [Errno 32] Broken pipe
-                # print('broken pipe er')
                 pass
             except Exception as e:
                 print('Send msg to master error \n\t', e)
@@ -54,33 +52,22 @@ class HearbeatDaemon(Client):
                  wait_time: float):
         super().__init__(worker_id, master_host, master_port)
 
-        # TODO this prevents `BrokenPipeError: [Errno 32] Broken pipe` raised by s.send() in util.sockets.send_message
-        # time.sleep(0.1)
         while True:
             self.send_message_to_master(message.write_alive(self.worker_id))
             time.sleep(wait_time)
 
 
-class WorkerInterface(Client):
+class WorkerInterface(Client, Server):
     """ Actually an abstract base class
     """
 
     def __init__(self, worker_id: int, master_host: str, master_port: int,
                  graph_path: str):
         super().__init__(worker_id, master_host, master_port)
+        self.re_init()  # init Server
+
         self.graph_path = graph_path
         self.terminate = False
-        self.message_interface = {}
-
-        # Create queue
-        self.server_queue = Queue()
-
-        # Start server with queue
-        server = Process(target=Server, args=(self.server_queue,))
-        server.start()
-
-        # Wait for server to send its hostname and port
-        self.hostname, self.port = self.server_queue.get()
 
         # Register self at master
         self.register()
@@ -98,17 +85,6 @@ class WorkerInterface(Client):
 
     def handle_job_complete(self, *args):
         self.terminate = True
-
-    def handle_queue(self):
-        while self.message_in_queue():
-            status, *args = self.get_message_from_queue()
-            self.message_interface[status](*args)
-
-    def get_message_from_queue(self) -> [str]:
-        """
-        :return: List of the elements of the data in the queue
-        """
-        return message.read(self.server_queue.get())
 
     def receive_meta_data(self) -> CombinedMetaData:
         status, all_meta_data = self.get_message_from_queue()
@@ -152,10 +128,3 @@ class WorkerInterface(Client):
         self.hearbeat_daemon = Process(target=HearbeatDaemon, args=(
             self.worker_id, self.master_host, self.master_port, wait_time))
         self.hearbeat_daemon.start()
-
-    def message_in_queue(self) -> bool:
-        """
-        :return: Boolean whether there are any messages in the queue
-        """
-
-        return not self.server_queue.empty()

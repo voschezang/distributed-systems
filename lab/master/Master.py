@@ -1,6 +1,6 @@
 from lab.util import command_line, message, sockets
 from lab.util.file_io import read_in_chunks, write_chunk, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, append_edge, get_number_of_lines, sort_file
-from multiprocessing import Process, Queue
+# from multiprocessing import Process, Queue
 from lab.util.server import Server
 from time import time, sleep
 from lab.util.meta_data import MetaData, CombinedMetaData
@@ -8,27 +8,18 @@ from sys import stdout
 from lab.util.distributed_graph import DistributedGraph
 
 
-class Master:
+class Master(Server):
     def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool, output_file: str, scale: float):
+        super().__init__()
         self.worker_script = worker_script
         self.n_workers = n_workers
         self.output_file = output_file
-
-        # Create queue
-        self.server_queue = Queue()
-
-        # Start server with queue
-        self.server = Process(target=Server, args=(self.server_queue,))
-        self.server.start()
-
-        # Wait for server to send its hostname and port
-        self.hostname, self.port = self.server_queue.get()
 
         # Split graph into sub graphs and send them to the workers
         self.workers = self.create_workers(graph_path, split_graph)
 
         # Can be used to handle incoming messages from the server
-        self.message_handler_interface = {
+        self.message_interface = {
             message.ALIVE: self.handle_alive,
             message.REGISTER: self.handle_register,
             message.DEBUG: self.handle_debug,
@@ -214,19 +205,6 @@ class Master:
         self.workers[worker_id]['job-complete'] = True
         self.workers[worker_id]['downscaled-sub-graph-path'] = output_path
 
-    def message_in_queue(self) -> bool:
-        """
-        :return: Boolean whether there are any messages in the queue
-        """
-
-        return not self.server_queue.empty()
-
-    def get_message_from_queue(self) -> [str]:
-        """
-        :return: List of the elements of the data in the queue
-        """
-        return message.read(self.server_queue.get())
-
     def register_workers(self):
         for i in range(len(self.workers)):
             status, *args = self.get_message_from_queue()
@@ -258,11 +236,6 @@ class Master:
     def wait_for_workers_to_complete(self):
         while not self.all_workers_done():
             self.handle_queue()
-
-    def handle_queue(self):
-        while self.message_in_queue():
-            status, *args = self.get_message_from_queue()
-            self.message_handler_interface[status](*args)
 
     def create_graph(self):
         graph = DistributedGraph(distributed=False)
