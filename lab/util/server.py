@@ -39,6 +39,8 @@ class Server:
     def handle_queue(self):
         while self.message_in_queue():
             status, *args = self.get_message_from_queue()
+            assert status in self.message_interface.keys(), \
+                f'Unknown status {status}'
             self.message_interface[status](*args)
 
     def get_message_from_queue(self) -> [str]:

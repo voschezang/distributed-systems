@@ -1,5 +1,5 @@
 from multiprocessing import Process
-import time
+from time import sleep
 
 from lab.util import sockets, message
 from lab.util.meta_data import MetaData, CombinedMetaData
@@ -20,7 +20,7 @@ class Client:
         """
         Sends a message to the master
         """
-        for i in range(1000):
+        for i in range(100):
             try:
                 sockets.send_message(
                     self.master_host, self.master_port, message_to_send)
@@ -32,8 +32,9 @@ class Client:
             except BrokenPipeError:
                 # Possibly: [Errno 32] Broken pipe
                 pass
-            except Exception as e:
-                print('Send msg to master error \n\t', e)
+            # except Exception as e:
+            #     print('Send msg to master error \n\t', e)
+            sleep(0.01 * i)
 
         raise Exception(
             f'Failed to connect to master. worker_id: {self.worker_id}')
@@ -54,7 +55,7 @@ class HearbeatDaemon(Client):
 
         while True:
             self.send_message_to_master(message.write_alive(self.worker_id))
-            time.sleep(wait_time)
+            sleep(wait_time)
 
 
 class WorkerInterface(Client, Server):
@@ -67,7 +68,7 @@ class WorkerInterface(Client, Server):
         self.re_init()  # init Server
 
         self.graph_path = graph_path
-        self.terminate = False
+        self.cancel = False
 
         # Register self at master
         self.register()
@@ -84,7 +85,11 @@ class WorkerInterface(Client, Server):
         raise NotImplementedError()
 
     def handle_finish_job(self, *args):
-        self.terminate = True
+        self.cancel = True
+
+    def handle_terminate(self):
+        self.hearbeat_daemon.terminate()
+        self.server.terminate()
 
     def receive_meta_data(self) -> CombinedMetaData:
         status, all_meta_data = self.get_message_from_queue()
@@ -112,11 +117,12 @@ class WorkerInterface(Client, Server):
             self.port
         ))
 
-    def send_job_complete(self):
-        """ Sends a JOB_COMPLETE to master. Override if additional information
-        is required.
+    def send_job_complete(self, path):
+        """ Sends a JOB_COMPLETE to master
         """
-        self.send_message_to_master(message.write_job_complete(self.worker_id))
+
+        self.send_message_to_master(
+            message.write_job(message.JOB_COMPLETE, self.worker_id, path))
 
     def send_debug_message(self, debug_message: str):
         self.send_message_to_master(message.write_debug(

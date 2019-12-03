@@ -13,6 +13,7 @@ class Master(Server):
         self.worker_script = worker_script
         self.n_workers = n_workers
         self.output_file = output_file
+        self.graph_path = graph_path
 
         # Split graph into sub graphs and send them to the workers
         self.workers = self.create_workers(graph_path, split_graph)
@@ -167,6 +168,12 @@ class Master(Server):
         Terminates the alive workers
         """
 
+        self.broadcast(message.write(status=message.TERMINATE))
+        self.handle_queue()
+        # Wait for workers to shutdown their child-processes
+        # TODO use confirmation msg
+        sleep(0.5)
+        self.handle_queue()
         for worker_id, worker in self.workers.items():
             if worker['process'] is not None:
                 worker['process'].terminate()
@@ -202,7 +209,7 @@ class Master(Server):
 
     def handle_job_complete(self, worker_id, output_path):
         self.workers[worker_id]['job-complete'] = True
-        self.workers[worker_id]['downscaled-sub-graph-path'] = output_path
+        self.workers[worker_id]['scaled-sub-graph-path'] = output_path
 
     def register_workers(self):
         for i in range(len(self.workers)):
@@ -234,12 +241,13 @@ class Master(Server):
 
     def wait_for_workers_to_complete(self):
         while not self.all_workers_done():
+            sleep(0.01)
             self.handle_queue()
 
     def create_graph(self):
         graph = DistributedGraph(distributed=False)
         for worker in self.workers.values():
-            graph.load_from_file(worker['downscaled-sub-graph-path'])
+            graph.load_from_file(worker['scaled-sub-graph-path'])
 
         return graph
 
@@ -260,5 +268,4 @@ class Master(Server):
         self.server.terminate()
 
         graph = self.create_graph()
-        print(graph)
         graph.write_to_file(self.output_file)

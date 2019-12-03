@@ -87,7 +87,8 @@ class DistributedGraph:
         return vertex
 
     def add_foreign_vertex(self, vertex_label) -> ForeignVertex:
-        vertex = ForeignVertex(vertex_label, *self.get_connection_that_has_vertex(vertex_label))
+        vertex = ForeignVertex(
+            vertex_label, *self.get_connection_that_has_vertex(vertex_label))
         self.foreign_vertices[vertex_label] = vertex
 
         return vertex

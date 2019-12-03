@@ -52,7 +52,7 @@ class Worker(WorkerInterface):
         """
 
         step = 0
-        while not self.terminate:
+        while not self.cancel:
             for random_walker in self.random_walkers:
                 try:
                     edge = random_walker.step()

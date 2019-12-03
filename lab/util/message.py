@@ -10,21 +10,23 @@ RANDOM_WALKER = 204
 PROGRESS = 205
 FINISH_JOB = 206  # Master to Worker
 JOB_COMPLETE = 207  # Response, Worker to Master
+TERMINATE = 208  # Shut down
 
 
-def write(status: int, body: dict or list):
+def write(status: int, body: dict or list = None):
+    if body is None:
+        # no content
+        body = ''
     return json.dumps({'status': status, 'body': body}).encode()
 
 
-def no_content(status: int, worker_id: int):
-    return write(
-        status=status,
-        body={'worker_id': worker_id}
-    )
-
-
 def write_alive(worker_id: int):
-    return no_content(ALIVE, worker_id)
+    return write(
+        status=ALIVE,
+        body={
+            'worker_id': worker_id
+        }
+    )
 
 
 def write_register(worker_id: int, host: str, port: int):
@@ -81,10 +83,9 @@ def write_job(status=JOB_COMPLETE, worker_id=None, path=None):
     )
 
 
-def read(message: bytes):
-    content = json.loads(message.decode())
-
-    return MESSAGE_INTERFACE[content['status']](content['body'])
+def read_status(status):
+    # Returns a constant function
+    return lambda body: (status,)
 
 
 def read_register(body: dict):
@@ -111,12 +112,14 @@ def read_progress(body: dict):
     return PROGRESS, body['worker_id'], body['number_of_edges']
 
 
-def read_finish_job(body):
-    return FINISH_JOB, body['worker_id'], body['path']
-
-
-def read_job_completed(body):
+def read_job_complete(body: dict):
     return JOB_COMPLETE, body['worker_id'], body['path']
+
+
+def read(message: bytes):
+    content = json.loads(message.decode())
+
+    return MESSAGE_INTERFACE[content['status']](content['body'])
 
 
 MESSAGE_INTERFACE = {
@@ -126,6 +129,7 @@ MESSAGE_INTERFACE = {
     DEBUG: read_debug,
     RANDOM_WALKER: read_random_walker,
     PROGRESS: read_progress,
-    FINISH_JOB: read_finish_job,
-    JOB_COMPLETE: read_job_completed
+    FINISH_JOB: read_status(FINISH_JOB),
+    JOB_COMPLETE: read_job_complete,
+    TERMINATE: read_status(TERMINATE)
 }

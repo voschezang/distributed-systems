@@ -124,6 +124,28 @@ def assert_standard_scale(name: str, value: str) -> float:
     return scale
 
 
+def assert_master_type(name: str, value: str) -> str:
+    """
+    Makes sure the value represents a Master class otherwise raises AssertionError
+
+    :param name: Argument name
+    :param value: Value
+    :return: Value as integer
+    """
+    # nested import to "avoid" circular dependency
+    from lab.master.Master import Master
+    from lab.master.Upscaler import Upscaler
+
+    MASTER_MAP = {"Master": Master,
+                  "Upscaler": Upscaler}
+
+    if value not in MASTER_MAP.keys():
+        types = ' | '.join(MASTER_MAP.keys())
+        raise AssertionError(f"Expected any of {types} but got {value}")
+
+    return MASTER_MAP[value]
+
+
 def no_assertion(name: str, value: str) -> str:
     """
     Make no assertion on the value
