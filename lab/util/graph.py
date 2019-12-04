@@ -47,6 +47,23 @@ class Graph:
     def n_edges(self):
         return sum(map(len, self.edges.values()))
 
+    @property
+    def inverse_edges(self):
+        try:
+            return self._inverse_edges
+        except AttributeError as e:
+            print('inverse_edges must be called once with arg `recompute=True`', e)
+            self.init_inverse_edges()
+            return self._inverse_edges
+
+    def init_inverse_edges(self):
+        self._inverse_edges = {}
+        for source, vertices in self.edges.items():
+            for target in vertices:
+                if target not in self._inverse_edges:
+                    self._inverse_edges[target] = []
+                self._inverse_edges[target].append(source)
+
     def addEdgeSet(self, edgeSet):
         number_of_edges = len(edgeSet)
         print("loading {} edges...".format(number_of_edges))
@@ -108,6 +125,20 @@ class Graph:
 
     def degree(self, vertex):
         return len(self.edges[vertex])
+
+    def indegree(self, vertex):
+        return len(self.inverse_edges[vertex])
+
+    def outdegree(self, vertex):
+        return len(self.edges[vertex])
+
+    def bidegree(self, vertex):
+        return self.indegree(vertex) + self.outdegree(vertex)
+
+    def rel_degree(self, vertex):
+        """ Returns the ratio: indegree / outdegree
+        """
+        return self.indegree(vertex) / self.outdegree(vertex)
 
     def cleanup(self):
         for v in self.vertices:

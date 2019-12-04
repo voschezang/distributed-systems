@@ -21,7 +21,9 @@ class DegreeDistrubution(Algorithm):
         super().__init__(v)
         self.graph = graph
 
-        self.hist, self.bins = metrics.degree_distribution(graph)
+        result = metrics.degree_distribution(graph)
+        self.hist, self.bins = result['pmf'], result['bins']
+
         self.new_vertex_label = max(graph.vertices) + 1
         new_graph = graph.copy()
         self.new_graph = new_graph
