@@ -40,6 +40,13 @@ class Graph:
         self.id = 0
 
     @property
+    def raw_edges(self):
+        for vertex_1 in self.edges:
+            for vertex_2 in self.edges[vertex_1]:
+                if vertex_2 > vertex_1:
+                    yield Edge(vertex_1, vertex_2)
+
+    @property
     def n_vertices(self):
         return len(self.vertices)
 
