@@ -117,12 +117,12 @@ class WorkerInterface(Client, Server):
             self.port
         ))
 
-    def send_job_complete(self, path):
+    def send_job_complete(self):
         """ Sends a JOB_COMPLETE to master
         """
 
         self.send_message_to_master(
-            message.write_job(message.JOB_COMPLETE, self.worker_id, path))
+            message.write_job(message.JOB_COMPLETE, self.worker_id))
 
     def send_debug_message(self, debug_message: str):
         self.send_message_to_master(message.write_debug(

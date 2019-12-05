@@ -11,6 +11,9 @@ PROGRESS = 205
 FINISH_JOB = 206  # Master to Worker
 JOB_COMPLETE = 207  # Response, Worker to Master
 TERMINATE = 208  # Shut down
+WORKER_FAILED = 209
+RANDOM_WALKER_COUNT = 210
+CONTINUE = 211
 
 
 def write(status: int, body: dict or list = None):
@@ -73,13 +76,33 @@ def write_progress(worker_id: int, number_of_edges: int):
     )
 
 
-def write_job(status=JOB_COMPLETE, worker_id=None, path=None):
+def write_job(status=JOB_COMPLETE, worker_id=None):
     return write(
         status=status,
         body={
-            'worker_id': worker_id,
-            'path': path
+            'worker_id': worker_id
         }
+    )
+
+
+def write_worker_failed():
+    return write(
+        status=WORKER_FAILED
+    )
+
+
+def write_random_walker_count(count: int):
+    return write(
+        status=RANDOM_WALKER_COUNT,
+        body={
+            'count': count
+        }
+    )
+
+
+def write_continue():
+    return write(
+        status=CONTINUE
     )
 
 
@@ -113,7 +136,11 @@ def read_progress(body: dict):
 
 
 def read_job_complete(body: dict):
-    return JOB_COMPLETE, body['worker_id'], body['path']
+    return JOB_COMPLETE, body['worker_id']
+
+
+def read_random_walker_count(body: dict):
+    return RANDOM_WALKER_COUNT, body['count']
 
 
 def read(message: bytes):
@@ -131,5 +158,8 @@ MESSAGE_INTERFACE = {
     PROGRESS: read_progress,
     FINISH_JOB: read_status(FINISH_JOB),
     JOB_COMPLETE: read_job_complete,
-    TERMINATE: read_status(TERMINATE)
+    TERMINATE: read_status(TERMINATE),
+    WORKER_FAILED: read_status(WORKER_FAILED),
+    RANDOM_WALKER_COUNT: read_random_walker_count,
+    CONTINUE: read_status(CONTINUE)
 }

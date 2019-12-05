@@ -119,22 +119,6 @@ def read_as_reversed_edges(f: TextIO):
         yield reverse_edge(edge)
 
 
-def write_chunk(worker_id: int, data: [str]) -> str:
-    """
-    Writes a list of lines to a tmp file
-
-    :param worker_id: Unique id for the file
-    :param data: Data to write to the file
-    :return: Path to the created file
-    """
-
-    path = "/tmp/sub_graph_{}.txt".format(worker_id)
-
-    write_to_file(path, data)
-
-    return path
-
-
 def append_edge(path: str, edge: str):
     f = open(path, "a")
     f.write(edge)
