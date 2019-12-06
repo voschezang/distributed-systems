@@ -1,4 +1,6 @@
-import copy, math, unittest
+import copy
+import math
+import unittest
 import numpy as np
 from lab.util.graph import Graph
 
@@ -27,20 +29,11 @@ class DegreeDistrubution(Algorithm):
         self.hist, self.bins = result['pmf'], result['bins']
 
         self.new_vertex_label = max(graph.vertices) + 1
-        new_graph = graph.copy()
-        self.new_graph = new_graph
-        assert self.new_vertex_label not in new_graph.vertices
+        self.new_graph = graph.copy()
+        assert self.new_vertex_label not in self.new_graph.vertices
         if self.v:
             print(self.new_vertex_label,
-                  self.new_vertex_label in new_graph.vertices)
-
-    def run(self):
-        """ Adds vertices
-        Returns a new graph
-        """
-        for _ in self:
-            pass
-        return self.scaled_graph
+                  self.new_vertex_label in self.new_graph.vertices)
 
     def __iter__(self):
         return self
@@ -48,7 +41,7 @@ class DegreeDistrubution(Algorithm):
     def __next__(self):
         # scale up
         # note that new vertices may connect to other new vertices
-        self.add_vertex(self.hist, self.bins, self.new_graph)
+        self.add_vertex(self.hist, self.bins)
         self.new_vertex_label += 1
 
     @property
@@ -56,9 +49,10 @@ class DegreeDistrubution(Algorithm):
         # filter old vertices
         for vertex in self.graph.vertices:
             self.new_graph.removeVertex(vertex)
+        # print('scaled graph', self.new_graph)
         return self.new_graph
 
-    def add_vertex(self, hist, bins, new_graph):
+    def add_vertex(self, hist, bins):
         """ Adds a single vertex
         """
         bin = np.random.choice(
@@ -75,16 +69,16 @@ class DegreeDistrubution(Algorithm):
             print('adding node with degree {}'.format(new_vertex_degree))
 
         new_neighbours = np.random.choice(
-            new_graph.vertices, size=new_vertex_degree, replace=False)
-        new_vertex = new_graph.addVertex(self.new_vertex_label)
+            self.new_graph.vertices, size=new_vertex_degree, replace=False)
+        new_vertex = self.new_graph.addVertex(self.new_vertex_label)
         for new_neighbour in new_neighbours:
             # TODO ignore duplicate edges and reflexive edges?
-            new_graph.addEdge(new_vertex, new_neighbour)
+            self.new_graph.addEdge(new_vertex, new_neighbour)
             # adding bidirectional edges biasses the graph
             # counter this by removing a random edge
             collateral_vertex = np.random.choice(
-                new_graph.edges[new_neighbour])
-            new_graph.removeEdge(new_neighbour, collateral_vertex)
+                self.new_graph.edges[new_neighbour])
+            self.new_graph.removeEdge(new_neighbour, collateral_vertex)
 
 
 class GScalerAlgorithm(Algorithm):
@@ -132,7 +126,7 @@ class GScalerAlgorithm(Algorithm):
         f_bi = [[f / (self.scale * self.original_graph.n_edges) for f in f_bi_row]
                 for f_bi_row in f_bi_count]
 
-        # Monster function N^4 -> [0, 1]. Sparse matrix, 
+        # Monster function N^4 -> [0, 1]. Sparse matrix,
         # might be possible to drop the zero values
         f_corr_entries = 0
         for edge_1 in self.original_graph.raw_edges:
@@ -173,31 +167,32 @@ class GScalerAlgorithm(Algorithm):
         f_bi_normalizing_factor = self.original_graph.n_edges * self.scale
         f_bi_normalizing_factor_inverse = 1.0 / f_bi_normalizing_factor
         S_bi_tilde = []
-        while len(S_in_tilde)>0 and len(S_out_tilde)>0:
+        while len(S_in_tilde) > 0 and len(S_out_tilde) > 0:
             incoming_vertex, incoming_edges = S_in_tilde.pop()
             incoming_degree = len(incoming_edges)
-            _, outgoing_degree = max([(probability, degree) for degree, probability in enumerate(f_bi[incoming_degree]) if probability>0])
+            _, outgoing_degree = max([(probability, degree) for degree, probability in enumerate(
+                f_bi[incoming_degree]) if probability > 0])
             for outgoing in S_out_tilde:
                 outgoing_vertex, outgoing_edges = outgoing
                 if len(outgoing_edges) == outgoing_degree:
                     S_out_tilde.remove(outgoing)
                     S_bi_tilde.append((incoming_edges, outgoing_edges))
-                    
+
                     # update f_bi
                     f_bi[incoming_degree][outgoing_degree] -= f_bi_normalizing_factor_inverse
                     break
         return S_bi_tilde
-    
+
     def manhattan(self, d1, d2):
         d11, d12 = d1
         d21, d22 = d2
         return abs(d11 - d21) + abs(d12 - d22)
-    
+
     def correlation_function_scaling(self, f_corr, f_bi):
         f_corr_tilde = copy.deepcopy(f_corr)
-        
+
         # if scale is integer, f_corr=f_corr_tilde
-        if int(self.scale)==self.scale:
+        if int(self.scale) == self.scale:
             return f_corr_tilde
 
         # print('f_corr', f_corr)
@@ -208,31 +203,33 @@ class GScalerAlgorithm(Algorithm):
                     for vertex_2_degree_out, probability in enumerate(depth_3):
                         # Three constaints, section 3.4.1
                         C1 = probability
-                        C2_O = self.get_C2_O(f_corr, vertex_1_degree_in, vertex_1_degree_out)
-                        C2_I = self.get_C2_I(f_corr, vertex_2_degree_in, vertex_2_degree_out)
+                        C2_O = self.get_C2_O(
+                            f_corr, vertex_1_degree_in, vertex_1_degree_out)
+                        C2_I = self.get_C2_I(
+                            f_corr, vertex_2_degree_in, vertex_2_degree_out)
                         C2 = min(C2_O, C2_I) / self.m_tilde
-                        C3 = (self.original_graph.n_edges * self.original_graph.n_edges * f_bi[vertex_1_degree_in][vertex_1_degree_out] * f_bi[vertex_2_degree_in][vertex_2_degree_out]) / self.m_tilde - f_corr_tilde[vertex_1_degree_in][vertex_1_degree_out][vertex_2_degree_in][vertex_2_degree_out]
+                        C3 = (self.original_graph.n_edges * self.original_graph.n_edges * f_bi[vertex_1_degree_in][vertex_1_degree_out] * f_bi[vertex_2_degree_in]
+                              [vertex_2_degree_out]) / self.m_tilde - f_corr_tilde[vertex_1_degree_in][vertex_1_degree_out][vertex_2_degree_in][vertex_2_degree_out]
                         increment = min(C1, C2, C3)
                         f_corr_tilde[vertex_1_degree_in][vertex_1_degree_out][vertex_2_degree_in][vertex_2_degree_out] += increment
         # print('f_corr_tilde', f_corr_tilde)
         return f_corr_tilde
-    
+
     def get_C2_O(self, f_corr, degree_in, degree_out):
-        O =  0
+        O = 0
         for degrees in f_corr[degree_in][degree_out]:
             for probability in degrees:
                 O += probability
 
         return self.original_graph.n_edges * O
-    
+
     def get_C2_I(self, f_corr, degree_in, degree_out):
-        I =  0
+        I = 0
         for degrees in f_corr:
             for probability in degrees:
                 I += probability[degree_in][degree_out]
 
         return self.original_graph.n_edges * I
-        
 
     def edge_synthesis(self, S_bi_tilde, f_corr, f_bi):
         f_corr_tilde = self.correlation_function_scaling(f_corr, f_bi)
@@ -249,18 +246,20 @@ class GScalerAlgorithm(Algorithm):
             print(len(S_bi_tilde))
             vertex_object = all_vertices.pop()
             incoming_nodes, outgoing_nodes = S_bi_tilde.pop()
-            degree = len(set(incoming_nodes) | set(outgoing_nodes) - set([vertex_object]))
+            degree = len(set(incoming_nodes) | set(
+                outgoing_nodes) - set([vertex_object]))
             to_be_linked = degree
             v_2 = 0
             for vertex_2, adjacent in zip(all_vertices, S_bi_tilde):
-                if to_be_linked==0:
+                if to_be_linked == 0:
                     break
                 incoming_nodes_2, outgoing_nodes_2 = adjacent
                 if vertex != v_2:
                     G_tilde.addEdge(vertex_object, vertex_2)
                     to_be_linked -= 1
-                    degree_2 = len(set(incoming_nodes_2) | set(outgoing_nodes_2) - set([v_2]))
-                    if G_tilde.degree(vertex_2)==degree_2:
+                    degree_2 = len(set(incoming_nodes_2) | set(
+                        outgoing_nodes_2) - set([v_2]))
+                    if G_tilde.degree(vertex_2) == degree_2:
                         all_vertices.remove(vertex_2)
                         S_bi_tilde.remove(adjacent)
                         # print(vertex_2, 'is saturated')
@@ -268,7 +267,7 @@ class GScalerAlgorithm(Algorithm):
                 v_2 += 1
             print(G_tilde)
             v += 1
-            
+
         return G_tilde
 
     def run(self):
@@ -297,14 +296,17 @@ class GScalerAlgorithmTest(unittest.TestCase):
         S_in_test = [(vertex_1, g.edges[vertex_1])
                      for vertex_1 in g.vertices]
         S_out_test = [(vertex_1, g.edges[vertex_1])
-                     for vertex_1 in g.vertices]
-        
+                      for vertex_1 in g.vertices]
+
         # Probability function, should add up to 1.
         self.assertAlmostEqual(sum([x for y in f_bi for x in y]), 1 / scale)
-        self.assertAlmostEqual(sum([x for v in f_corr for z in v for y in z for x in y]), 1)
+        self.assertAlmostEqual(
+            sum([x for v in f_corr for z in v for y in z for x in y]), 1)
 
-        f_bi_test = [[0.0,0.0,0.0,0.0], [0.0, 0.0, 0.0, 0.0625], [0.0, 0.0, 0.125, 0.125], [0.0, 0.0625, 0.125,0.0]]
-        f_corr_test = [[[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]], [[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]], [[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.05263157894736842, 0.05263157894736842], [0.0, 0.0, 0.05263157894736842, 0.05263157894736842]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.10526315789473684, 0.21052631578947367, 0.0], [0.0, 0.10526315789473684, 0.21052631578947367, 0.0]]], [[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.05263157894736842], [0.0, 0.0, 0.0, 0.10526315789473684], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]]]
+        f_bi_test = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0625], [
+            0.0, 0.0, 0.125, 0.125], [0.0, 0.0625, 0.125, 0.0]]
+        f_corr_test = [[[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]], [[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]], [[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [
+            0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.05263157894736842, 0.05263157894736842], [0.0, 0.0, 0.05263157894736842, 0.05263157894736842]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.10526315789473684, 0.21052631578947367, 0.0], [0.0, 0.10526315789473684, 0.21052631578947367, 0.0]]], [[[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.05263157894736842], [0.0, 0.0, 0.0, 0.10526315789473684], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]], [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]]]
         # self.assertEqual(S_in, S_in_test)
         # self.assertEqual(S_out, S_out_test)
         self.assertEqual(f_bi, f_bi_test)
@@ -326,10 +328,10 @@ class GScalerAlgorithmTest(unittest.TestCase):
         S_out_tilde = gscaler.scaling(S_out)
 
         S_in_tilde_test = scale * [(vertex_1, [(vertex_1, vertex_2) for vertex_2 in g.edges[vertex_1]])
-                     for vertex_1 in g.vertices if len(g.edges[vertex_1])>0]
+                                   for vertex_1 in g.vertices if len(g.edges[vertex_1]) > 0]
         S_out_tilde_test = scale * [(vertex_1, [(vertex_1, vertex_2) for vertex_2 in g.edges[vertex_1]])
-                     for vertex_1 in g.vertices if len(g.edges[vertex_1])>0]
-        
+                                    for vertex_1 in g.vertices if len(g.edges[vertex_1]) > 0]
+
         self.assertEqual(len(S_in_tilde), len(S_in_tilde_test))
         self.assertEqual(len(S_out_tilde), len(S_out_tilde_test))
 

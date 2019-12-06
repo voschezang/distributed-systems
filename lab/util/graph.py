@@ -71,7 +71,7 @@ class Graph:
                     self._inverse_edges[target] = []
                 self._inverse_edges[target].append(source)
 
-    def addEdgeSet(self, edgeSet):
+    def addEdgeSet(self, edgeSet, bidirectional=True):
         number_of_edges = len(edgeSet)
         print("loading {} edges...".format(number_of_edges))
         for edge in edgeSet:
@@ -82,7 +82,7 @@ class Graph:
                 vertex_2 = self.addVertex(v_2)
             vertex_1 = self.vertices_dict[v_1]
             vertex_2 = self.vertices_dict[v_2]
-            self.addEdge(vertex_1, vertex_2)
+            self.addEdge(vertex_1, vertex_2, bidirectional)
 
     def addEdge(self, vertex_1: Vertex, vertex_2: Vertex, bidirectional=True):
         if not vertex_1 in self.vertices:
@@ -187,15 +187,17 @@ class Graph:
                 edge_set.append([int(v_1), int(v_2)])
         self.addEdgeSet(edge_set)
 
-    def save_to_file(self, filename="graph.txt", mode='adjacency_list'):
+    def save_to_file(self, filename="graph.txt", mode='adjacency_list', bidirectional=True):
         if mode == 'adjacency_list':
             with open(filename, 'w') as file:
                 for vertex_1 in self.vertices:
                     for vertex_2 in self.edges[vertex_1]:
-                        if vertex_1 < vertex_2:
+                        if not bidirectional or vertex_1 < vertex_2:
                             file.write('{} {}\n'.format(
-                                vertex_1.label, vertex_2.label))
+                                str(vertex_1), str(vertex_2)))
 
+        else:
+            raise NotImplementedError()
         print('done')
 
     def save_as_pickle(self, filename="graph"):

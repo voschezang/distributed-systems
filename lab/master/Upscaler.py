@@ -5,9 +5,9 @@ from time import sleep
 
 class Upscaler(Master):
     def run(self):
-        print('Run upscaler')
+        print('Upscaler')
         # while self.total_progress() < self.goal_size:
-        for i in range(10):
+        for i in range(100):
             sleep(0.1)
             self.handle_queue()
             self.print_progress()
@@ -22,6 +22,7 @@ class Upscaler(Master):
         print('Aggregate graph')
         # aggregate generated edges
         graph = self.create_graph()
+        print(graph)
         # append original graph
         graph.load_from_file(self.graph_path)
         print(graph)

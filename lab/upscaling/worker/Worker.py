@@ -41,8 +41,7 @@ class Worker(WorkerInterface):
                 self.send_progress_message(step)
 
         diff = algorithm.scaled_graph
-
-        diff.save_to_file(self.output_filename)
+        diff.save_to_file(self.output_filename, bidirectional=False)
 
         self.send_job_complete(self.output_filename)
 

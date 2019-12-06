@@ -152,7 +152,7 @@ class Master(Server):
             workers[worker_id]['progress'] = 0
             workers[worker_id]['last-alive'] = None
             workers[worker_id]['job-complete'] = False
-            workers[worker_id]['downscaled-sub-graph-path'] = None
+            workers[worker_id]['scaled-sub-graph-path'] = None
             workers[worker_id]['process'] = command_line.setup_worker(
                 self.worker_script,
                 worker_id,
@@ -209,6 +209,7 @@ class Master(Server):
 
     def handle_job_complete(self, worker_id, output_path):
         self.workers[worker_id]['job-complete'] = True
+        print(f'output_path {output_path}')
         self.workers[worker_id]['scaled-sub-graph-path'] = output_path
 
     def register_workers(self):
