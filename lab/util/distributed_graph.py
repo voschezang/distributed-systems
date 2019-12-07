@@ -5,10 +5,8 @@ from lab.util.meta_data import CombinedMetaData
 
 
 class ForeignVertex:
-    def __init__(self, label: int, host: str, port: int):
+    def __init__(self, label: int):
         self.label = label
-        self.host = host
-        self.port = port
 
     def __str__(self):
         return str(self.label)
@@ -77,9 +75,6 @@ class DistributedGraph:
     def has_vertex(self, vertex_label):
         return self.combined_meta_data[self.worker_id].has_vertex(vertex_label)
 
-    def get_connection_that_has_vertex(self, vertex_label):
-        return self.combined_meta_data.get_connection_that_has_vertex(vertex_label)
-
     def add_vertex(self, vertex_label) -> Vertex:
         vertex = Vertex(vertex_label)
         self.vertices[vertex_label] = vertex
@@ -87,8 +82,7 @@ class DistributedGraph:
         return vertex
 
     def add_foreign_vertex(self, vertex_label) -> ForeignVertex:
-        vertex = ForeignVertex(
-            vertex_label, *self.get_connection_that_has_vertex(vertex_label))
+        vertex = ForeignVertex(vertex_label)
         self.foreign_vertices[vertex_label] = vertex
 
         return vertex

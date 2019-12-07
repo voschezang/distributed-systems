@@ -14,6 +14,7 @@ TERMINATE = 208  # Shut down
 WORKER_FAILED = 209
 RANDOM_WALKER_COUNT = 210
 CONTINUE = 211
+IGNORE = 212
 
 
 def write(status: int, body: dict or list = None):
@@ -91,10 +92,11 @@ def write_worker_failed():
     )
 
 
-def write_random_walker_count(count: int):
+def write_random_walker_count(worker_id: int, count: int):
     return write(
         status=RANDOM_WALKER_COUNT,
         body={
+            'worker_id': worker_id,
             'count': count
         }
     )
@@ -140,7 +142,7 @@ def read_job_complete(body: dict):
 
 
 def read_random_walker_count(body: dict):
-    return RANDOM_WALKER_COUNT, body['count']
+    return RANDOM_WALKER_COUNT, body['worker_id'], body['count']
 
 
 def read(message: bytes):

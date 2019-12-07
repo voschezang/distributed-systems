@@ -154,6 +154,12 @@ def write_to_file(path, data):
     f.close()
 
 
+def append_to_file(path, data):
+    f = open(path, "a")
+    f.writelines(data)
+    f.close()
+
+
 def sort_file(path):
     edges = pd.DataFrame(to_int_edge_list(read_file(path)), columns=['start', 'end'])
     edges = edges.sort_values(['start', 'end'])

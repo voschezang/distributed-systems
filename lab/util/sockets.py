@@ -38,3 +38,13 @@ def send_message(host, port, message: bytes):
     s = connect(host, port)
     s.send(message)
     s.close()
+
+
+def is_alive(host, port):
+    try:
+        s = connect(host, port)
+        s.close()
+    except ConnectionRefusedError:
+        return False
+
+    return True

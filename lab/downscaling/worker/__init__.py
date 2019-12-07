@@ -23,6 +23,8 @@ def main():
         scale = get_arg("--scale", assert_pos_float)
         method = get_arg("--method", assert_method)
         output_file = get_arg("--output", assert_path)
+        number_of_random_walkers = get_arg("--n-random-walkers", assert_nonnegative_int, 1)
+
     except AssertionError as e:
         print_error(e)
         print_error(
@@ -34,10 +36,11 @@ def main():
             "\t--scale: The scale of the downscaled graph w.r.t. the input graph\n"
             "\t--method: The method to use for downscaling, `random_walk` or `random_edge`\n"
             "\t--output: File to output the downscaled graph to\n"
+            "\t--n-random-walkers: Number of random walkers to start with\n"
         )
         return
 
-    Worker(worker_id, master_host, master_port, graph_path, scale, method, output_file)
+    Worker(worker_id, master_host, master_port, graph_path, scale, method, output_file, number_of_random_walkers)
 
 
 if __name__ == '__main__':

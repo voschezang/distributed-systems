@@ -7,7 +7,7 @@ from lab.util.meta_data import MetaData, CombinedMetaData
 from sys import stdout
 from lab.util.distributed_graph import DistributedGraph
 from uuid import uuid4
-
+from math import ceil
 
 class Master(Server):
     def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
@@ -19,6 +19,7 @@ class Master(Server):
         self.method = method
         self.graph_path = graph_path
         self.scale = scale
+        self.random_walker_counts_received = 0
 
         # Split graph into sub graphs and send them to the workers
         self.worker_info_collection = WorkerInfoCollection()
@@ -30,7 +31,8 @@ class Master(Server):
             message.REGISTER: self.handle_register,
             message.DEBUG: self.handle_debug,
             message.PROGRESS: self.handle_progress,
-            message.JOB_COMPLETE: self.handle_job_complete
+            message.JOB_COMPLETE: self.handle_job_complete,
+            message.RANDOM_WALKER_COUNT: self.handle_random_walker_count
         }
 
         self.register_workers()
@@ -75,7 +77,7 @@ class Master(Server):
                 self.worker_info_collection[worker_id] = WorkerInfo(
                     worker_id=worker_id,
                     input_sub_graph_path=graph_path,
-                    output_sub_graph_path=self.random_temp_file(),
+                    output_sub_graph_path=self.random_temp_file(f'output-worker-{worker_id}'),
                     meta_data=MetaData(
                         worker_id=worker_id,
                         number_of_edges=get_number_of_lines(graph_path),
@@ -87,13 +89,13 @@ class Master(Server):
     def split_graph(self, graph_path):
         f = open(graph_path, "r")
         for worker_id, sub_graph in enumerate(read_in_chunks(f, self.n_workers)):
-            sub_graph_path = self.random_temp_file()
+            sub_graph_path = self.random_temp_file(f'input-worker-{worker_id}')
             write_to_file(sub_graph_path, sub_graph)
 
             self.worker_info_collection[worker_id] = WorkerInfo(
                 worker_id=worker_id,
                 input_sub_graph_path=sub_graph_path,
-                output_sub_graph_path=self.random_temp_file(),
+                output_sub_graph_path=self.random_temp_file(f'output-worker-{worker_id}'),
                 meta_data=MetaData(
                     worker_id=worker_id,
                     number_of_edges=get_number_of_lines(sub_graph_path),
@@ -139,8 +141,8 @@ class Master(Server):
         )
 
     @staticmethod
-    def random_temp_file():
-        return f'/tmp/{str(uuid4())}.txt'
+    def random_temp_file(prefix: str):
+        return f'/tmp/{prefix}-{str(uuid4())}.txt'
 
     def terminate_workers(self):
         """
@@ -187,19 +189,30 @@ class Master(Server):
     def handle_job_complete(self, worker_id):
         self.worker_info_collection[worker_id].job_complete = True
 
+    def handle_random_walker_count(self, worker_id, count):
+        self.worker_info_collection[worker_id].random_walker_count = count
+        self.random_walker_counts_received += 1
+
     def register_workers(self):
         for i in range(len(self.worker_info_collection)):
             status, *args = self.get_message_from_queue()
             self.handle_register(*args)
 
-    def broadcast(self, message):
+    def broadcast(self, message, allow_connection_refused: bool = False):
         for worker_info in self.worker_info_collection.values():
-            sockets.send_message(*worker_info.meta_data.get_connection_info(), message)
+            if worker_info.is_registered():
+                if allow_connection_refused:
+                    try:
+                        sockets.send_message(*worker_info.meta_data.get_connection_info(), message)
+                    except ConnectionRefusedError:
+                        continue
+                else:
+                    sockets.send_message(*worker_info.meta_data.get_connection_info(), message)
 
-    def send_meta_data_to_workers(self):
+    def send_meta_data_to_workers(self, allow_connection_refused: bool = False):
         self.broadcast(message.write_meta_data([
             worker_info.meta_data.to_dict() for worker_info in self.worker_info_collection.values()
-        ]))
+        ]), allow_connection_refused)
 
     def total_progress(self):
         return self.worker_info_collection.get_progress()
@@ -221,14 +234,77 @@ class Master(Server):
 
         return graph
 
-    def pause_workers(self):
-        self.broadcast(message.write_worker_failed())
+    def wait_for_random_walker_counts(self, expected_number: int):
+        while self.random_walker_counts_received < expected_number:
+            self.handle_queue()
+            sleep(0.01)
+        self.random_walker_counts_received = 0
 
-    def worker_control(self):
-        for worker_id, worker_info in self.worker_info_collection.items():
-            if not self.worker_info_collection[worker_id].is_alive():
-                self.pause_workers()
-                worker_info.start_worker()
+    def wait_for_worker_to_register(self, worker_id):
+        while not self.worker_info_collection[worker_id].is_registered():
+            self.handle_queue()
+            sleep(0.01)
+
+    def pause_workers(self):
+        self.broadcast(message.write_worker_failed(), allow_connection_refused=True)
+
+    def continue_workers(self):
+        self.broadcast(message.write_continue(), allow_connection_refused=True)
+
+    def get_failed_workers(self):
+        if len([worker_id for worker_id in self.worker_info_collection.keys() if not self.worker_info_collection[worker_id].is_alive()]) == 0:
+            return []
+
+        return [worker_id for worker_id, worker_info in self.worker_info_collection.items() if not sockets.is_alive(*worker_info.meta_data.get_connection_info())]
+
+    def control_workers(self):
+        failed_workers = self.get_failed_workers()
+
+        if len(failed_workers) == 0:
+            return
+
+        print("\n\n")
+
+        # Update connection info
+        for worker_id in failed_workers:
+            print(f"Worker {worker_id} died")
+            self.worker_info_collection[worker_id].meta_data.set_connection_info(None, None)
+
+        print(f"Pausing workers")
+        self.pause_workers()
+
+        print("Waiting for random walker counts")
+        self.wait_for_random_walker_counts(len(self.worker_info_collection) - len(failed_workers))
+
+        random_walkers_to_restart = len(self.worker_info_collection) - self.worker_info_collection.random_walker_count()
+
+        for worker_id in failed_workers:
+            print(f"Restarting worker {worker_id}")
+
+            number_of_random_walkers = ceil(random_walkers_to_restart / len(failed_workers))
+            if number_of_random_walkers < 0:
+                number_of_random_walkers = 0
+
+            self.worker_info_collection[worker_id].start_worker(
+                worker_script=self.worker_script,
+                hostname=self.hostname,
+                port=self.port,
+                scale=self.scale,
+                method=self.method,
+                number_of_random_walkers=number_of_random_walkers
+            )
+
+            random_walkers_to_restart -= number_of_random_walkers
+
+        for worker_id in failed_workers:
+            print(f"Waiting for worker {worker_id} to register")
+            self.wait_for_worker_to_register(worker_id)
+
+        print(f"Sending updated meta-data to workers")
+        self.send_meta_data_to_workers(allow_connection_refused=True)
+
+        self.continue_workers()
+        print(f"Restart successful\n")
 
     def run(self):
         """
@@ -240,6 +316,7 @@ class Master(Server):
                 sleep(0.1)
                 self.handle_queue()
                 self.print_progress()
+                self.control_workers()
             print("\nJob complete")
             self.broadcast(message.write_job(message.FINISH_JOB))
 
