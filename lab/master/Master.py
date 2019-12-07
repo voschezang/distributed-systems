@@ -9,6 +9,7 @@ from lab.util.distributed_graph import DistributedGraph
 from uuid import uuid4
 from math import ceil
 
+
 class Master(Server):
     def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
                  scale: float, method: str):

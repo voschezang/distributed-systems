@@ -47,7 +47,7 @@ def assert_positive_int(name: str, value: str) -> int:
     return int(value)
 
 
-def assert_pos_float(name: str, value: str) -> int:
+def assert_pos_float(name: str, value: str) -> float:
     """
     Makes sure the value is a positive float, otherwise raises AssertionError
 
@@ -96,11 +96,13 @@ def assert_path(name: str, value: str) -> str:
 
     return value
 
+
 def assert_method(name: str, value: str) -> str:
     if value == "random_walk" or value == "random_edge":
         return value
     else:
         raise AssertionError("Invalid method for {}: `{}`".format(name, value))
+
 
 def assert_host(name: str, value: str) -> str:
     """
@@ -129,7 +131,7 @@ def assert_standard_scale(name: str, value: str) -> float:
     return scale
 
 
-def assert_master_type(name: str, value: str) -> str:
+def assert_master_type(name: str, value: str):
     """
     Makes sure the value represents a Master class otherwise raises AssertionError
 
