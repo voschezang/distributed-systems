@@ -1,3 +1,6 @@
+from lab.util import file_io, message
+
+
 class UnexpectedChunkIndex(Exception):
     def __init__(self, message, expected_index):
 
@@ -27,3 +30,44 @@ class FileReceiver:
     def handle_end_send_file(self):
         if not self.received_complete_file:
             raise UnexpectedChunkIndex('Missing chunk(s) at end send file', self.expected_chunk_index)
+
+
+class FileSender:
+    def __init__(self, worker_id: int, file_type: int, data: list):
+        self.messages = self.create_messages(worker_id, data, file_type)
+
+        self.target_received_file = False
+        self.index = 0
+
+    @property
+    def complete_file_send(self):
+        return self.index >= len(self.messages)
+
+    @staticmethod
+    def get_file_chunk(worker_id, file_type, index, data: list):
+        chunk = ''
+        lines = 0
+
+        for line in data:
+            if len(message.write_file_chunk(worker_id, file_type, index, chunk + line)) > message.MAX_MESSAGE_SIZE:
+                break
+
+            chunk += line
+            lines += 1
+
+        return chunk, lines
+
+    def create_messages(self, worker_id: int, data: list, file_type: int):
+        messages = []
+        while len(data) > 0:
+            chunk, lines_in_chunk = self.get_file_chunk(worker_id, file_type, len(messages), data)
+            del data[:lines_in_chunk]
+            messages.append(message.write_file_chunk(worker_id, file_type, len(messages), chunk))
+
+        return messages
+
+    def get_next_message(self):
+        next_message = self.messages[self.index]
+        self.index += 1
+
+        return next_message

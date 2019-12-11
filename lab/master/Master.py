@@ -1,10 +1,11 @@
 from lab.master.worker_info import WorkerInfoCollection, WorkerInfo
-from lab.util import command_line, message, sockets
+from lab.util import message, sockets
 from lab.util.file_io import read_in_chunks, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, \
-    append_edge, get_number_of_lines, sort_file, write_to_file, read_file
+    append_edge, get_number_of_lines, write_to_file, read_file
+from lab.util.file_transfer import FileSender, UnexpectedChunkIndex, FileReceiver
 from lab.util.server import Server
 from time import time, sleep
-from lab.util.meta_data import MetaData, CombinedMetaData
+from lab.util.meta_data import MetaData
 from sys import stdout
 from lab.util.distributed_graph import DistributedGraph
 from uuid import uuid4
@@ -36,7 +37,10 @@ class Master(Server):
             message.JOB_COMPLETE: self.handle_job_complete,
             message.RANDOM_WALKER_COUNT: self.handle_random_walker_count,
             message.MISSING_CHUNK: self.handle_missing_chunk,
-            message.RECEIVED_FILE: self.handle_received_file
+            message.RECEIVED_FILE: self.handle_received_file,
+            message.START_SEND_FILE: self.handle_start_send_file,
+            message.END_SEND_FILE: self.handle_end_send_file,
+            message.FILE_CHUNK: self.handle_file_chunk
         }
 
         self.register_workers()
@@ -57,7 +61,8 @@ class Master(Server):
 
     def send_graphs_to_workers(self):
         for worker_id, worker_info in self.worker_info_collection.items():
-            self.send_file_to_worker(worker_id, worker_info.input_sub_graph_path, message.GRAPH)
+            data = read_file(worker_info.input_sub_graph_path)
+            self.send_data_to_worker(worker_id, data, message.GRAPH)
 
     def process_graph(self, graph_path: str, split_graph: bool) -> [MetaData]:
         """
@@ -214,54 +219,62 @@ class Master(Server):
             message
         )
 
-    @staticmethod
-    def get_file_chunk(worker_id, file_type, index, data: list):
-        chunk = ''
-        lines = 0
+    def handle_missing_chunk(self, worker_id, file_type, index):
+        self.worker_info_collection[worker_id].file_senders[file_type].index = index
 
-        for line in data:
-            if len(message.write_file_chunk(worker_id, file_type, index, chunk + line)) > message.MAX_MESSAGE_SIZE:
-                break
+    def handle_received_file(self, worker_id, file_type):
+        self.worker_info_collection[worker_id].file_senders[file_type].target_received_file = True
 
-            chunk += line
-            lines += 1
+    def send_data_to_worker(self, worker_id: int, data: list, file_type: int):
+        self.worker_info_collection[worker_id].file_senders[file_type] = FileSender(worker_id, file_type, data)
+        file_sender = self.worker_info_collection[worker_id].file_senders[file_type]
 
-        return chunk, lines
-
-    def divide_file_into_chunk_messages(self, worker_id: int, path: str, file_type: int) -> list:
-        data = read_file(path)
-
-        messages = []
-        while len(data) > 0:
-            chunk, lines_in_chunk = self.get_file_chunk(worker_id, file_type, len(messages), data)
-            del data[:lines_in_chunk]
-            messages.append(message.write_file_chunk(worker_id, file_type, len(messages), chunk))
-
-        return messages
-
-    def handle_missing_chunk(self, worker_id, index):
-        self.worker_info_collection[worker_id].file_chunk_index = index
-
-    def handle_received_file(self, worker_id):
-        self.worker_info_collection[worker_id].received_file = True
-
-    def send_file_to_worker(self, worker_id: int, path: str, file_type: int):
-        messages = self.divide_file_into_chunk_messages(worker_id, path, file_type)
-
-        self.worker_info_collection[worker_id].received_file = False
-        self.worker_info_collection[worker_id].file_chunk_index = 0
-        self.send_message_to_worker(worker_id, message.write_start_send_file(worker_id, file_type, len(messages)))
-        while not self.worker_info_collection[worker_id].received_file:
-            index = self.worker_info_collection[worker_id].file_chunk_index
-
-            if index < len(messages):
-                self.send_message_to_worker(worker_id, messages[index])
-                self.worker_info_collection[worker_id].file_chunk_index += 1
-            else:
+        self.send_message_to_worker(worker_id, message.write_start_send_file(worker_id, file_type, len(file_sender.messages)))
+        while not file_sender.target_received_file:
+            if file_sender.complete_file_send:
                 self.send_message_to_worker(worker_id, message.write_end_send_file(worker_id, file_type))
                 sleep(0.1)
+            else:
+                self.send_message_to_worker(worker_id, file_sender.get_next_message())
 
             self.handle_queue()
+
+        self.worker_info_collection[worker_id].file_senders[file_type] = None
+
+    def handle_start_send_file(self, worker_id, file_type, number_of_chunks):
+        self.worker_info_collection[worker_id].file_receivers[file_type] = FileReceiver(number_of_chunks)
+
+    def handle_file_chunk(self, worker_id, file_type, index, chunk):
+        try:
+            self.worker_info_collection[worker_id].file_receivers[file_type].receive_chunk(index, chunk)
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_worker(worker_id, message.write_missing_chunk(worker_id, file_type, e.expected_index))
+        except AttributeError:
+            return
+
+    def handle_end_send_file(self, worker_id, file_type):
+        try:
+            self.worker_info_collection[worker_id].file_receivers[file_type].handle_end_send_file()
+            self.send_message_to_worker(worker_id, message.write_received_file(worker_id, file_type))
+
+            if file_type == message.BACKUP:
+                self.handle_backup(worker_id)
+
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_worker(worker_id, message.write_missing_chunk(worker_id, file_type, e.expected_index))
+        except AttributeError:
+            return
+
+    def handle_backup(self, worker_id):
+        new_edges = self.worker_info_collection[worker_id].file_receivers[message.BACKUP].file
+
+        for edge in new_edges:
+            if edge == '':
+                continue
+
+            self.worker_info_collection[worker_id].backup.append(edge + '\n')
+
+        self.worker_info_collection[worker_id].file_receivers[message.BACKUP] = None
 
     def broadcast(self, message, allow_connection_refused: bool = False):
         for worker_info in self.worker_info_collection.values():
@@ -295,7 +308,7 @@ class Master(Server):
     def create_graph(self):
         graph = DistributedGraph(distributed=False)
         for worker_info in self.worker_info_collection.values():
-            graph.load_from_file(worker_info.output_sub_graph_path)
+            graph.load_from_list(worker_info.backup)
 
         return graph
 
@@ -356,7 +369,8 @@ class Master(Server):
                 port=self.port,
                 scale=self.scale,
                 method=self.method,
-                number_of_random_walkers=number_of_random_walkers
+                number_of_random_walkers=number_of_random_walkers,
+                load_backup=1
             )
 
             random_walkers_to_restart -= number_of_random_walkers
@@ -367,6 +381,9 @@ class Master(Server):
 
         print(f"Sending updated meta-data to workers")
         self.send_meta_data_to_workers(allow_connection_refused=True)
+
+        for worker_id in failed_workers:
+            self.send_data_to_worker(worker_id, self.worker_info_collection[worker_id].backup, message.BACKUP)
 
         self.continue_workers()
         print(f"Restart successful\n")

@@ -1,8 +1,11 @@
 from typing import Dict
+
+from lab.util.file_transfer import FileSender, FileReceiver
 from lab.util.meta_data import MetaData, CombinedMetaData
 from time import time
 from lab.util.file_io import get_number_of_lines, get_first_line, get_last_line, get_start_vertex, sort_file
 from lab.util.command_line import setup_worker
+from lab.util import message
 
 MAX_HEARTBEAT_DELAY = 1.0
 
@@ -11,15 +14,22 @@ class WorkerInfo:
     def __init__(self, worker_id: int, input_sub_graph_path: str, output_sub_graph_path: str, meta_data: MetaData):
         self.worker_id = worker_id
         self.input_sub_graph_path = input_sub_graph_path
-        self.output_sub_graph_path = output_sub_graph_path
         self.meta_data = meta_data
         self.process = None
         self.last_alive = None
         self.progress = 0
         self.job_complete = False
         self.random_walker_count = 0
-        self.file_chunk_index = 0
-        self.received_file = False
+        self.backup = []
+
+        self.file_senders: Dict[int, FileSender] = {
+            message.GRAPH: None,
+            message.BACKUP: None
+        }
+        self.file_receivers: Dict[int, FileReceiver] = {
+            message.GRAPH: None,
+            message.BACKUP: None
+        }
 
     def is_alive(self):
         return self.last_alive is not None and time() - self.last_alive < MAX_HEARTBEAT_DELAY
@@ -39,7 +49,7 @@ class WorkerInfo:
     def is_registered(self):
         return self.meta_data.is_registered()
 
-    def start_worker(self, worker_script, hostname, port, scale, method, number_of_random_walkers=1):
+    def start_worker(self, worker_script, hostname, port, scale, method, number_of_random_walkers=1, load_backup=0):
         self.meta_data.host = None
         self.meta_data.port = None
 
@@ -50,7 +60,7 @@ class WorkerInfo:
             port,
             scale,
             method,
-            self.output_sub_graph_path,
+            load_backup,
             number_of_random_walkers
         )
 

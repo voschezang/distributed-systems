@@ -133,17 +133,19 @@ def write_file_chunk(worker_id: int, file_type: int, index: int, chunk: str):
     })
 
 
-def write_missing_chunk(worker_id: int, index: int):
+def write_missing_chunk(worker_id: int, file_type: int, index: int):
     return write(status=MISSING_CHUNK, body={
         'worker_id': worker_id,
+        'file_type': file_type,
         'index': index
     })
 
 
-def write_received_file(worker_id: int):
+def write_received_file(worker_id: int, file_type: int):
     return write(
         status=RECEIVED_FILE, body={
-            'worker_id': worker_id
+            'worker_id': worker_id,
+            'file_type': file_type
         }
     )
 
@@ -204,11 +206,11 @@ def read_file_chunk(body: dict):
 
 
 def read_missing_chunk(body: dict):
-    return MISSING_CHUNK, body['worker_id'], body['index']
+    return MISSING_CHUNK, body['worker_id'], body['file_type'], body['index']
 
 
 def read_received_file(body: dict):
-    return RECEIVED_FILE, body['worker_id']
+    return RECEIVED_FILE, body['worker_id'], body['file_type']
 
 
 def read_end_send_file(body: dict):

@@ -4,9 +4,9 @@ from lab.util.validation import (
     assert_nonnegative_int,
     assert_positive_int,
     assert_host,
-    assert_file,
+    assert_bool,
     assert_pos_float,
-    assert_method, assert_path)
+    assert_method)
 from lab.downscaling.worker.Worker import Worker
 
 
@@ -21,8 +21,8 @@ def main():
         master_port = get_arg("--master-port", assert_positive_int)
         scale = get_arg("--scale", assert_pos_float)
         method = get_arg("--method", assert_method)
-        output_file = get_arg("--output", assert_path)
-        number_of_random_walkers = get_arg("--n-random-walkers", assert_nonnegative_int, 1)
+        load_backup = get_arg("--load-backup", assert_bool, default=0)
+        number_of_random_walkers = get_arg("--n-random-walkers", assert_nonnegative_int, default=1)
 
     except AssertionError as e:
         print_error(e)
@@ -33,12 +33,12 @@ def main():
             "\t--master-port: The port of the master\n"
             "\t--scale: The scale of the downscaled graph w.r.t. the input graph\n"
             "\t--method: The method to use for downscaling, `random_walk` or `random_edge`\n"
-            "\t--output: File to output the downscaled graph to\n"
+            "\t--load-backup: Should the worker load from a backup send by the master\n"
             "\t--n-random-walkers: Number of random walkers to start with\n"
         )
         return
 
-    Worker(worker_id, master_host, master_port, scale, method, output_file, number_of_random_walkers)
+    Worker(worker_id, master_host, master_port, scale, method, load_backup, number_of_random_walkers)
 
 
 if __name__ == '__main__':

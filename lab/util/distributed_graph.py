@@ -129,6 +129,7 @@ class DistributedGraph:
                 edges.append(str(edge) + "\n")
 
         file_io.write_to_file(path, edges)
+        file_io.sort_file(path)
 
     def __str__(self):
         return f"Graph |V|={len(self.vertices.keys())}, |E|={self.number_of_edges}"

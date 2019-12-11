@@ -4,14 +4,14 @@ from lab.downscaling.worker.RandomWalker import RandomWalker, ForeignVertexExcep
 from numpy.random import randint, random
 from numpy import array
 from lab.util import message, file_io, validation
-from lab.util.file_transfer import FileReceiver, UnexpectedChunkIndex
+from lab.util.file_transfer import FileReceiver, UnexpectedChunkIndex, FileSender
 from lab.util.meta_data import CombinedMetaData, MetaData
 from time import sleep
 from typing import Dict
 
 
 class Worker(WorkerInterface):
-    def __init__(self, worker_id: int, master_host: str, master_port: int, scale: float, method: str, output_file: str, number_of_random_walkers: int):
+    def __init__(self, worker_id: int, master_host: str, master_port: int, scale: float, method: str, load_backup: bool, number_of_random_walkers: int):
         super().__init__(worker_id, master_host, master_port)
 
         self.message_interface = {
@@ -22,16 +22,19 @@ class Worker(WorkerInterface):
             message.CONTINUE: self.handle_continue,
             message.START_SEND_FILE: self.handle_start_send_file,
             message.FILE_CHUNK: self.handle_file_chunk,
-            message.END_SEND_FILE: self.handle_end_send_file
+            message.END_SEND_FILE: self.handle_end_send_file,
+            message.MISSING_CHUNK: self.handle_missing_chunk,
+            message.RECEIVED_FILE: self.handle_received_file
         }
 
-        self.output_file = output_file
         self.running = False
 
         self.file_receivers: Dict[int, FileReceiver] = {
             message.GRAPH: None,
             message.BACKUP: None
         }
+
+        self.backup_sender = None
 
         self.receive_graph()
 
@@ -50,7 +53,11 @@ class Worker(WorkerInterface):
             self.random_walkers = [
                 RandomWalker(self.get_random_vertex()) for _ in range(number_of_random_walkers)
             ]
-            self.collected_edges = self.build_from_backup()
+
+            if load_backup:
+                self.collected_edges = self.build_from_backup()
+            else:
+                self.collected_edges = {}
 
             self.wait_until_continue()
             self.run_random_walk()
@@ -74,17 +81,17 @@ class Worker(WorkerInterface):
         ])
 
     def build_from_backup(self):
-        try:
-            validation.assert_file('', self.output_file)
-        except AssertionError:
-            return {}
+        while self.file_receivers[message.BACKUP] is None or not self.file_receivers[message.BACKUP].received_complete_file:
+            self.handle_queue()
+            sleep(0.1)
 
         collected_edges = {}
 
-        f = open(self.output_file, 'r')
-        for line in f:
+        for line in self.file_receivers[message.BACKUP].file:
+            if line == '':
+                continue
+
             collected_edges[line.strip()] = True
-        f.close()
 
         return collected_edges
 
@@ -130,25 +137,42 @@ class Worker(WorkerInterface):
         try:
             self.file_receivers[file_type].receive_chunk(index, chunk)
         except UnexpectedChunkIndex as e:
-            self.send_message_to_master(message.write_missing_chunk(self.worker_id, e.expected_index))
+            self.send_message_to_master(message.write_missing_chunk(self.worker_id, file_type, e.expected_index))
 
     def handle_end_send_file(self, worker_id, file_type):
         try:
             self.file_receivers[file_type].handle_end_send_file()
-            self.send_message_to_master(message.write_received_file(self.worker_id))
+            self.send_message_to_master(message.write_received_file(self.worker_id, file_type))
         except UnexpectedChunkIndex as e:
-            self.send_message_to_master(message.write_missing_chunk(self.worker_id, e.expected_index))
+            self.send_message_to_master(message.write_missing_chunk(self.worker_id, file_type, e.expected_index))
+
+    def handle_missing_chunk(self, worker_id, file_type, index):
+        self.backup_sender.index = index
+
+    def handle_received_file(self, worker_id, file_type):
+        self.backup_sender.target_received_file = True
+
+    def send_backup_to_master(self, data: list):
+        self.backup_sender = FileSender(self.worker_id, message.BACKUP, data=data)
+
+        self.send_message_to_master(message.write_start_send_file(self.worker_id, message.BACKUP, len(self.backup_sender.messages)))
+        while not self.backup_sender.target_received_file:
+            if self.backup_sender.complete_file_send:
+                self.send_message_to_master(message.write_end_send_file(self.worker_id, message.BACKUP))
+                sleep(0.1)
+            else:
+                self.send_message_to_master(self.backup_sender.get_next_message())
+
+            self.handle_queue()
+
+        self.backup_sender = None
 
     def run_random_edge(self):
         """
         Runs the worker
         """
         self.collected_edges = self.edges[random(len(self.edges)) < self.scale]
-        file_io.write_to_file(
-            path=self.output_file,
-            data=[str(edge) + '\n' for edge in self.collected_edges]
-        )
-        file_io.sort_file(self.output_file)
+        self.send_backup_to_master([str(edge) + '\n' for edge in self.collected_edges])
         self.send_job_complete()
 
     def run_random_walk(self):
@@ -182,16 +206,16 @@ class Worker(WorkerInterface):
 
             if step % 1000 == 0:
                 self.send_progress_message()
-                file_io.append_to_file(
-                    path=self.output_file,
-                    data=new_edges
-                )
+
+            if len(new_edges) > 100:
+                self.send_backup_to_master(new_edges)
                 new_edges = []
 
             if step > die_after_n_steps:
                 self.handle_terminate()
                 return
 
-        file_io.sort_file(self.output_file)
+        if len(new_edges) > 0:
+            self.send_backup_to_master(new_edges)
 
         self.send_job_complete()
