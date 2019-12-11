@@ -1,6 +1,7 @@
 from lab.master.worker_info import WorkerInfoCollection, WorkerInfo
 from lab.util import command_line, message, sockets
-from lab.util.file_io import read_in_chunks, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, append_edge, get_number_of_lines, sort_file, write_to_file
+from lab.util.file_io import read_in_chunks, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, \
+    append_edge, get_number_of_lines, sort_file, write_to_file, read_file
 from lab.util.server import Server
 from time import time, sleep
 from lab.util.meta_data import MetaData, CombinedMetaData
@@ -33,11 +34,15 @@ class Master(Server):
             message.DEBUG: self.handle_debug,
             message.PROGRESS: self.handle_progress,
             message.JOB_COMPLETE: self.handle_job_complete,
-            message.RANDOM_WALKER_COUNT: self.handle_random_walker_count
+            message.RANDOM_WALKER_COUNT: self.handle_random_walker_count,
+            message.MISSING_CHUNK: self.handle_missing_chunk,
+            message.RECEIVED_FILE: self.handle_received_file
         }
 
         self.register_workers()
         self.send_meta_data_to_workers()
+        self.send_graphs_to_workers()
+
         self.goal_size = self.get_goal_size()
 
         # Run master until stopped
@@ -49,6 +54,10 @@ class Master(Server):
 
     def get_goal_size(self):
         return self.worker_info_collection.get_total_number_of_edges() * self.scale
+
+    def send_graphs_to_workers(self):
+        for worker_id, worker_info in self.worker_info_collection.items():
+            self.send_file_to_worker(worker_id, worker_info.input_sub_graph_path, message.GRAPH)
 
     def process_graph(self, graph_path: str, split_graph: bool) -> [MetaData]:
         """
@@ -199,6 +208,61 @@ class Master(Server):
             status, *args = self.get_message_from_queue()
             self.handle_register(*args)
 
+    def send_message_to_worker(self, worker_id, message: bytes):
+        sockets.send_message(
+            *self.worker_info_collection[worker_id].meta_data.get_connection_info(),
+            message
+        )
+
+    @staticmethod
+    def get_file_chunk(worker_id, file_type, index, data: list):
+        chunk = ''
+        lines = 0
+
+        for line in data:
+            if len(message.write_file_chunk(worker_id, file_type, index, chunk + line)) > message.MAX_MESSAGE_SIZE:
+                break
+
+            chunk += line
+            lines += 1
+
+        return chunk, lines
+
+    def divide_file_into_chunk_messages(self, worker_id: int, path: str, file_type: int) -> list:
+        data = read_file(path)
+
+        messages = []
+        while len(data) > 0:
+            chunk, lines_in_chunk = self.get_file_chunk(worker_id, file_type, len(messages), data)
+            del data[:lines_in_chunk]
+            messages.append(message.write_file_chunk(worker_id, file_type, len(messages), chunk))
+
+        return messages
+
+    def handle_missing_chunk(self, worker_id, index):
+        self.worker_info_collection[worker_id].file_chunk_index = index
+
+    def handle_received_file(self, worker_id):
+        self.worker_info_collection[worker_id].received_file = True
+
+    def send_file_to_worker(self, worker_id: int, path: str, file_type: int):
+        messages = self.divide_file_into_chunk_messages(worker_id, path, file_type)
+
+        self.worker_info_collection[worker_id].received_file = False
+        self.worker_info_collection[worker_id].file_chunk_index = 0
+        self.send_message_to_worker(worker_id, message.write_start_send_file(worker_id, file_type, len(messages)))
+        while not self.worker_info_collection[worker_id].received_file:
+            index = self.worker_info_collection[worker_id].file_chunk_index
+
+            if index < len(messages):
+                self.send_message_to_worker(worker_id, messages[index])
+                self.worker_info_collection[worker_id].file_chunk_index += 1
+            else:
+                self.send_message_to_worker(worker_id, message.write_end_send_file(worker_id, file_type))
+                sleep(0.1)
+
+            self.handle_queue()
+
     def broadcast(self, message, allow_connection_refused: bool = False):
         for worker_info in self.worker_info_collection.values():
             if worker_info.is_registered():
@@ -311,6 +375,7 @@ class Master(Server):
         """
         Runs the master
         """
+        self.broadcast(message.write_continue())
 
         if self.method == "random_walk":
             while self.total_progress() < self.goal_size:

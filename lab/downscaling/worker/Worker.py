@@ -4,43 +4,61 @@ from lab.downscaling.worker.RandomWalker import RandomWalker, ForeignVertexExcep
 from numpy.random import randint, random
 from numpy import array
 from lab.util import message, file_io, validation
+from lab.util.file_transfer import FileReceiver, UnexpectedChunkIndex
 from lab.util.meta_data import CombinedMetaData, MetaData
 from time import sleep
+from typing import Dict
 
 
 class Worker(WorkerInterface):
-    def __init__(self, worker_id: int, master_host: str, master_port: int, graph_path: str, scale: float, method: str, output_file: str, number_of_random_walkers: int):
-        super().__init__(worker_id, master_host, master_port, graph_path)
+    def __init__(self, worker_id: int, master_host: str, master_port: int, scale: float, method: str, output_file: str, number_of_random_walkers: int):
+        super().__init__(worker_id, master_host, master_port)
 
         self.message_interface = {
             message.META_DATA: self.handle_meta_data,
             message.RANDOM_WALKER: self.handle_random_walker,
             message.FINISH_JOB: self.handle_finish_job,
             message.WORKER_FAILED: self.handle_worker_failed,
-            message.CONTINUE: self.handle_continue
+            message.CONTINUE: self.handle_continue,
+            message.START_SEND_FILE: self.handle_start_send_file,
+            message.FILE_CHUNK: self.handle_file_chunk,
+            message.END_SEND_FILE: self.handle_end_send_file
         }
 
         self.output_file = output_file
-        self.running = True
+        self.running = False
+
+        self.file_receivers: Dict[int, FileReceiver] = {
+            message.GRAPH: None,
+            message.BACKUP: None
+        }
+
+        self.receive_graph()
 
         if method == "random_edge":
             self.scale = scale
             self.edges = []
-            with open(graph_path) as file:
-                for line in file:
-                    vertex1_label, vertex2_label = file_io.parse_to_edge(line)
-                    self.edges.append(Edge(Vertex(vertex1_label), Vertex(vertex2_label)))
+            for line in self.file_receivers[message.GRAPH].file:
+                vertex1_label, vertex2_label = file_io.parse_to_edge(line)
+                self.edges.append(Edge(Vertex(vertex1_label), Vertex(vertex2_label)))
             self.edges = array(self.edges)
+            self.wait_until_continue()
             self.run_random_edge()
         elif method == "random_walk":
             self.graph = DistributedGraph(
-                worker_id, self.combined_meta_data, graph_path)
+                worker_id, self.combined_meta_data, self.file_receivers[message.GRAPH].file)
             self.random_walkers = [
                 RandomWalker(self.get_random_vertex()) for _ in range(number_of_random_walkers)
             ]
             self.collected_edges = self.build_from_backup()
 
+            self.wait_until_continue()
             self.run_random_walk()
+
+    def receive_graph(self):
+        while self.file_receivers[message.GRAPH] is None or not self.file_receivers[message.GRAPH].received_complete_file:
+            self.handle_queue()
+            sleep(0.1)
 
     def handle_meta_data(self, all_meta_data):
         self.combined_meta_data = CombinedMetaData([
@@ -88,8 +106,10 @@ class Worker(WorkerInterface):
     def handle_worker_failed(self):
         self.running = False
         self.send_message_to_master(message.write_random_walker_count(self.worker_id, len(self.random_walkers)))
+        self.wait_until_continue()
 
-        while self.running:
+    def wait_until_continue(self):
+        while not self.running:
             self.handle_queue()
             sleep(0.01)
 
@@ -102,6 +122,22 @@ class Worker(WorkerInterface):
     def send_progress_message(self):
         self.send_message_to_master(message.write_progress(
             self.worker_id, len(self.collected_edges)))
+
+    def handle_start_send_file(self, worker_id, file_type, number_of_chunks):
+        self.file_receivers[file_type] = FileReceiver(number_of_chunks)
+
+    def handle_file_chunk(self, worker_id, file_type, index, chunk):
+        try:
+            self.file_receivers[file_type].receive_chunk(index, chunk)
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_master(message.write_missing_chunk(self.worker_id, e.expected_index))
+
+    def handle_end_send_file(self, worker_id, file_type):
+        try:
+            self.file_receivers[file_type].handle_end_send_file()
+            self.send_message_to_master(message.write_received_file(self.worker_id))
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_master(message.write_missing_chunk(self.worker_id, e.expected_index))
 
     def run_random_edge(self):
         """
@@ -122,7 +158,7 @@ class Worker(WorkerInterface):
 
         new_edges = []
 
-        die_after_n_steps = randint(10000, 300000)
+        die_after_n_steps = randint(1000000, 30000000)
 
         step = 0
         while not self.cancel:

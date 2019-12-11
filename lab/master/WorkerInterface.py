@@ -66,12 +66,10 @@ class WorkerInterface(Client, Server):
     """ Actually an abstract base class
     """
 
-    def __init__(self, worker_id: int, master_host: str, master_port: int,
-                 graph_path: str):
+    def __init__(self, worker_id: int, master_host: str, master_port: int):
         super().__init__(worker_id, master_host, master_port)
         self.re_init()  # init Server
 
-        self.graph_path = graph_path
         self.cancel = False
 
         # Register self at master

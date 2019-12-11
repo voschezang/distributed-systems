@@ -1,5 +1,8 @@
 import json
 
+MAX_MESSAGE_SIZE = 1024
+GRAPH = 100
+BACKUP = 101
 
 # Status Codes
 ALIVE = 200
@@ -15,6 +18,11 @@ WORKER_FAILED = 209
 RANDOM_WALKER_COUNT = 210
 CONTINUE = 211
 IGNORE = 212
+START_SEND_FILE = 213
+FILE_CHUNK = 214
+MISSING_CHUNK = 215
+RECEIVED_FILE = 216
+END_SEND_FILE = 217
 
 
 def write(status: int, body: dict or list = None):
@@ -108,6 +116,48 @@ def write_continue():
     )
 
 
+def write_start_send_file(worker_id: int, file_type: int, number_of_chunks: int):
+    return write(status=START_SEND_FILE, body={
+        'worker_id': worker_id,
+        'file_type': file_type,
+        'number_of_chunks': number_of_chunks
+    })
+
+
+def write_file_chunk(worker_id: int, file_type: int, index: int, chunk: str):
+    return write(status=FILE_CHUNK, body={
+        'worker_id': worker_id,
+        'file_type': file_type,
+        'index': index,
+        'chunk': chunk
+    })
+
+
+def write_missing_chunk(worker_id: int, index: int):
+    return write(status=MISSING_CHUNK, body={
+        'worker_id': worker_id,
+        'index': index
+    })
+
+
+def write_received_file(worker_id: int):
+    return write(
+        status=RECEIVED_FILE, body={
+            'worker_id': worker_id
+        }
+    )
+
+
+def write_end_send_file(worker_id: int, file_type: int):
+    return write(
+        status=END_SEND_FILE,
+        body={
+            'worker_id': worker_id,
+            'file_type': file_type
+        }
+    )
+
+
 def read_status(status):
     # Returns a constant function
     return lambda body: (status,)
@@ -145,6 +195,26 @@ def read_random_walker_count(body: dict):
     return RANDOM_WALKER_COUNT, body['worker_id'], body['count']
 
 
+def read_start_send_file(body: dict):
+    return START_SEND_FILE, body['worker_id'], body['file_type'], body['number_of_chunks']
+
+
+def read_file_chunk(body: dict):
+    return FILE_CHUNK, body['worker_id'], body['file_type'], body['index'], body['chunk']
+
+
+def read_missing_chunk(body: dict):
+    return MISSING_CHUNK, body['worker_id'], body['index']
+
+
+def read_received_file(body: dict):
+    return RECEIVED_FILE, body['worker_id']
+
+
+def read_end_send_file(body: dict):
+    return END_SEND_FILE, body['worker_id'], body['file_type']
+
+
 def read(message: bytes):
     content = json.loads(message.decode())
 
@@ -163,5 +233,10 @@ MESSAGE_INTERFACE = {
     TERMINATE: read_status(TERMINATE),
     WORKER_FAILED: read_status(WORKER_FAILED),
     RANDOM_WALKER_COUNT: read_random_walker_count,
-    CONTINUE: read_status(CONTINUE)
+    CONTINUE: read_status(CONTINUE),
+    START_SEND_FILE: read_start_send_file,
+    RECEIVED_FILE: read_received_file,
+    FILE_CHUNK: read_file_chunk,
+    MISSING_CHUNK: read_missing_chunk,
+    END_SEND_FILE: read_end_send_file
 }

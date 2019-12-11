@@ -18,6 +18,8 @@ class WorkerInfo:
         self.progress = 0
         self.job_complete = False
         self.random_walker_count = 0
+        self.file_chunk_index = 0
+        self.received_file = False
 
     def is_alive(self):
         return self.last_alive is not None and time() - self.last_alive < MAX_HEARTBEAT_DELAY
@@ -46,7 +48,6 @@ class WorkerInfo:
             self.worker_id,
             hostname,
             port,
-            self.input_sub_graph_path,
             scale,
             method,
             self.output_sub_graph_path,

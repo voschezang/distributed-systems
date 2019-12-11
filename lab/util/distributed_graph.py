@@ -54,15 +54,15 @@ class Edge:
 
 
 class DistributedGraph:
-    def __init__(self, worker_id: int = None, combined_meta_data: CombinedMetaData = None, graph_path: str = None, distributed: bool = True):
+    def __init__(self, worker_id: int = None, combined_meta_data: CombinedMetaData = None, data: str = None, distributed: bool = True):
         self.vertices: Dict[int, Vertex] = {}
         self.foreign_vertices: Dict[int, ForeignVertex] = {}
         self.worker_id = worker_id
         self.combined_meta_data = combined_meta_data
         self.distributed = distributed
 
-        if graph_path:
-            self.load_from_file(graph_path)
+        if data:
+            self.load_from_list(data)
 
     @property
     def number_of_vertices(self):
@@ -98,6 +98,18 @@ class DistributedGraph:
                 return self.foreign_vertices[vertex_label]
             except KeyError:
                 return self.add_foreign_vertex(vertex_label)
+
+    def load_from_list(self, data):
+        for line in data:
+            if line == '':
+                continue
+
+            vertex1_label, vertex2_label = file_io.parse_to_edge(line)
+
+            vertex1 = self.get_vertex(vertex1_label)
+            vertex2 = self.get_vertex(vertex2_label)
+
+            vertex1.add_edge(Edge(vertex1, vertex2))
 
     def load_from_file(self, filename='graph.txt'):
         with open(filename) as file:
