@@ -1,7 +1,7 @@
 import numpy as np
 import networkx as nx
-from networkx.algorithms import approximation, centrality, distance_measures, cluster, shortest_paths
-from networkx.classes import function
+from networkx.algorithms import approximation,  distance_measures, cluster, shortest_paths
+from networkx.exception import NetworkXError
 
 from lab.util.argument_parser import get_arg
 from lab.util.validation import assert_file
@@ -31,56 +31,58 @@ def degree_distribution(graph: Graph, degree_attr='degree', bins='auto'):
             }
 
 
+def average_clustering(graph: nx.Graph, approximate=True):
+    # only for undirected graphs
+    if approximate:
+        return approximation.average_clustering(graph)
+
+    return cluster.average_clustering(graph)
+
+
+def diameter(graph: nx.Graph):
+    """ Diameter or max. eccentricity of a graph
+    Returns float or inf
+    """
+    try:
+        # graph must be connected and undirected
+        return distance_measures.diameter(graph)
+    except NetworkXError:
+        return np.inf
+
+
+def aspl(graph: nx.Graph):
+    """ Average Shortest Path Length
+    Returns float or inf
+    """
+    try:
+        # graph must be connected and undirected
+        return shortest_paths.generic.average_shortest_path_length(graph)
+    except NetworkXError:
+        return np.inf
+
+
 if __name__ == '__main__':
     filename = get_arg("--graph", assert_file,
                        default='data/facebook_head.txt')
 
     graph = Graph()
     graph.load_from_file(filename)
-    bin_pmf, bins = degree_distribution(graph, 'outdegree')
+    result = degree_distribution(graph, 'outdegree')
+    print(f'mean degree {result["mean"]}')
 
     graph.init_inverse_edges()
-    bin_pmf, bins = degree_distribution(graph, 'indegree')
-
-    # graph = nx.readwrite.edgelist.read_edgelist(
-    #     filename, nodetype=int, create_using=nx.DiGraph)
-    #
-    # node connectivity
-    # strict lower bound on the actual number of node independent paths between two nodes
-    # https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.approximation.connectivity.all_pairs_node_connectivity.html#id2
-    # r = approximation.connectivity.all_pairs_node_connectivity(graph)
-    # print(r)
-
-    # hist = function.degree_histogram(graph)
-    # print(type(hist))
-    # print(graph)
-    # clique = approximation.clique.max_clique(graph)
+    result = degree_distribution(graph, 'indegree')
+    print(f'mean degree {result["mean"]}')
 
     # only for undirected graphs
     graph = nx.readwrite.edgelist.read_edgelist(
         filename, nodetype=int, create_using=nx.Graph)
-    # size = approximation.clique.large_clique_size(graph)
-    # print(size)
 
-    # only for undirected graphs
-    k = approximation.average_clustering(graph)
+    k = average_clustering(graph)
     print(f'avg clustering coef: {k}')
-    k = cluster.average_clustering(graph)
-    print(f'avg clustering coef: {k}')
-    # k = cluster.generalized_degree(graph)
 
-    # graph must be connected
-    # d = distance_measures.diameter(graph)
-    # print(f'diameter: {d}')
+    d = diameter(graph)
+    print(f'diameter: {d}')
 
-    # r = approximation.ramsey.ramsey_R2(graph)
-    # print(r)
-
-    # indegree = centrality.in_degree_centrality(graph)
-    # print(indegree)
-
-    # graph must be connected
-    # s = shortest_paths.generic.average_shortest_path_length(graph)
-    # print(f'shortest path: {s}')
-
-    # print(graph.edges)
+    s = aspl(graph)
+    print(f'shortest path: {s}')
