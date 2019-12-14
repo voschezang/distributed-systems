@@ -108,7 +108,7 @@ class WorkerInfoCollection:
 
     def terminate_workers(self):
         for worker_info in self.worker_info_collection.values():
-            worker_info.process.terminate()
+            worker_info.process.close()
 
     def get_progress(self):
         return sum([worker_info.progress for worker_info in self.worker_info_collection.values()])

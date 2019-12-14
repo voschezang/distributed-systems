@@ -194,7 +194,7 @@ class Worker(WorkerInterface):
 
         new_edges = []
 
-        die_after_n_steps = randint(500000, 2000000)
+        die_after_n_steps = randint(500000, 1500000)
 
         step = 0
         while not self.cancel:
