@@ -10,7 +10,6 @@ REGISTER = 201
 META_DATA = 202
 DEBUG = 203
 RANDOM_WALKER = 204
-PROGRESS = 205
 FINISH_JOB = 206  # Master to Worker
 JOB_COMPLETE = 207  # Response, Worker to Master
 TERMINATE = 208  # Shut down
@@ -71,16 +70,6 @@ def write_random_walker(vertex_label: int):
         status=RANDOM_WALKER,
         body={
             'vertex_label': vertex_label
-        }
-    )
-
-
-def write_progress(worker_id: int, number_of_edges: int):
-    return write(
-        status=PROGRESS,
-        body={
-            'worker_id': worker_id,
-            'number_of_edges': number_of_edges
         }
     )
 
@@ -185,10 +174,6 @@ def read_random_walker(body: dict):
     return RANDOM_WALKER, body['vertex_label']
 
 
-def read_progress(body: dict):
-    return PROGRESS, body['worker_id'], body['number_of_edges']
-
-
 def read_job_complete(body: dict):
     return JOB_COMPLETE, body['worker_id']
 
@@ -229,7 +214,6 @@ MESSAGE_INTERFACE = {
     META_DATA: read_meta_data,
     DEBUG: read_debug,
     RANDOM_WALKER: read_random_walker,
-    PROGRESS: read_progress,
     FINISH_JOB: read_status(FINISH_JOB),
     JOB_COMPLETE: read_job_complete,
     TERMINATE: read_status(TERMINATE),

@@ -29,6 +29,9 @@ class Worker(WorkerInterface):
 
         self.running = False
 
+        self.number_of_random_walkers = number_of_random_walkers
+        self.add_random_walker_at = []
+
         self.file_receivers: Dict[int, FileReceiver] = {
             message.GRAPH: None,
             message.BACKUP: None
@@ -54,6 +57,9 @@ class Worker(WorkerInterface):
                 RandomWalker(self.get_random_vertex()) for _ in range(number_of_random_walkers)
             ]
 
+            for vertex_label in self.add_random_walker_at:
+                self.random_walkers.append(RandomWalker(self.graph.vertices[vertex_label]))
+
             if load_backup:
                 self.collected_edges = self.build_from_backup()
             else:
@@ -65,7 +71,6 @@ class Worker(WorkerInterface):
     def receive_graph(self):
         while self.file_receivers[message.GRAPH] is None or not self.file_receivers[message.GRAPH].received_complete_file:
             self.handle_queue()
-            sleep(0.1)
 
     def handle_meta_data(self, all_meta_data):
         self.combined_meta_data = CombinedMetaData([
@@ -104,15 +109,26 @@ class Worker(WorkerInterface):
         ]
 
     def handle_random_walker(self, vertex_label: int):
-        self.random_walkers.append(RandomWalker(
-            self.graph.vertices[vertex_label]))
+        # If worker is still being setup after crash and receives a message from another already running worker
+        if not hasattr(self, 'random_walkers'):
+            self.add_random_walker_at.append(vertex_label)
+            return
+
+        self.random_walkers.append(RandomWalker(self.graph.vertices[vertex_label]))
 
     def handle_continue(self):
         self.running = True
 
     def handle_worker_failed(self):
         self.running = False
-        self.send_message_to_master(message.write_random_walker_count(self.worker_id, len(self.random_walkers)))
+
+        # If worker is still being setup after crash and receives a message from another already running worker
+        if not hasattr(self, 'random_walkers'):
+            number_of_random_walkers = self.number_of_random_walkers + len(self.add_random_walker_at)
+        else:
+            number_of_random_walkers = len(self.random_walkers)
+
+        self.send_message_to_master(message.write_random_walker_count(self.worker_id, number_of_random_walkers))
         self.wait_until_continue()
 
     def wait_until_continue(self):
@@ -125,10 +141,6 @@ class Worker(WorkerInterface):
             *self.combined_meta_data.get_connection_that_has_vertex(vertex.label),
             message.write_random_walker(vertex.label)
         )
-
-    def send_progress_message(self):
-        self.send_message_to_master(message.write_progress(
-            self.worker_id, len(self.collected_edges)))
 
     def handle_start_send_file(self, worker_id, file_type, number_of_chunks):
         self.file_receivers[file_type] = FileReceiver(number_of_chunks)
@@ -156,7 +168,7 @@ class Worker(WorkerInterface):
         self.backup_sender = FileSender(self.worker_id, message.BACKUP, data=data)
 
         self.send_message_to_master(message.write_start_send_file(self.worker_id, message.BACKUP, len(self.backup_sender.messages)))
-        while not self.backup_sender.target_received_file:
+        while not self.backup_sender.target_received_file or not self.backup_sender.complete_file_send:
             if self.backup_sender.complete_file_send:
                 self.send_message_to_master(message.write_end_send_file(self.worker_id, message.BACKUP))
                 sleep(0.1)
@@ -182,12 +194,13 @@ class Worker(WorkerInterface):
 
         new_edges = []
 
-        die_after_n_steps = randint(1000000, 30000000)
+        die_after_n_steps = randint(500000, 2000000)
 
         step = 0
         while not self.cancel:
             self.handle_queue()
 
+            success = False
             for random_walker in self.random_walkers:
                 try:
                     edge = random_walker.step()
@@ -195,17 +208,19 @@ class Worker(WorkerInterface):
                     if str(edge) not in self.collected_edges:
                         self.collected_edges[str(edge)] = True
                         new_edges.append(str(edge) + "\n")
+
+                    success = True
                 except ForeignVertexException:
                     try:
                         self.send_random_walker_message(random_walker.vertex)
-                        self.random_walkers.remove(random_walker)
                     except ConnectionRefusedError:
                         continue
 
-            step += 1
+                    self.random_walkers.remove(random_walker)
+                    success = True
 
-            if step % 1000 == 0:
-                self.send_progress_message()
+            if success:
+                step += 1
 
             if len(new_edges) > 100:
                 self.send_backup_to_master(new_edges)

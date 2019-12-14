@@ -24,7 +24,7 @@ class FileReceiver:
         if index != self.expected_chunk_index:
             raise UnexpectedChunkIndex(f'Unexpected chunk index: {index}, expected {self.expected_chunk_index}', self.expected_chunk_index)
 
-        self.file += chunk.split('\n')
+        self.file += [line + '\n' for line in chunk.rstrip().split('\n')]
         self.expected_chunk_index += 1
 
     def handle_end_send_file(self):
@@ -35,7 +35,6 @@ class FileReceiver:
 class FileSender:
     def __init__(self, worker_id: int, file_type: int, data: list):
         self.messages = self.create_messages(worker_id, data, file_type)
-
         self.target_received_file = False
         self.index = 0
 
@@ -49,7 +48,7 @@ class FileSender:
         lines = 0
 
         for line in data:
-            if len(message.write_file_chunk(worker_id, file_type, index, chunk + line)) > message.MAX_MESSAGE_SIZE:
+            if len(message.write_file_chunk(worker_id, file_type, index, chunk + line)) >= message.MAX_MESSAGE_SIZE:
                 break
 
             chunk += line

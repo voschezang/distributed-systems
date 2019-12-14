@@ -101,9 +101,6 @@ class DistributedGraph:
 
     def load_from_list(self, data):
         for line in data:
-            if line == '':
-                continue
-
             vertex1_label, vertex2_label = file_io.parse_to_edge(line)
 
             vertex1 = self.get_vertex(vertex1_label)

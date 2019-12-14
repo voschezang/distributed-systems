@@ -11,16 +11,16 @@ MAX_HEARTBEAT_DELAY = 1.0
 
 
 class WorkerInfo:
-    def __init__(self, worker_id: int, input_sub_graph_path: str, output_sub_graph_path: str, meta_data: MetaData):
+    def __init__(self, worker_id: int, input_sub_graph_path: str, meta_data: MetaData, hostname: str):
         self.worker_id = worker_id
         self.input_sub_graph_path = input_sub_graph_path
         self.meta_data = meta_data
         self.process = None
         self.last_alive = None
-        self.progress = 0
         self.job_complete = False
         self.random_walker_count = 0
         self.backup = []
+        self.hostname = hostname
 
         self.file_senders: Dict[int, FileSender] = {
             message.GRAPH: None,
@@ -30,6 +30,10 @@ class WorkerInfo:
             message.GRAPH: None,
             message.BACKUP: None
         }
+
+    @property
+    def progress(self):
+        return len(self.backup)
 
     def is_alive(self):
         return self.last_alive is not None and time() - self.last_alive < MAX_HEARTBEAT_DELAY
@@ -49,15 +53,16 @@ class WorkerInfo:
     def is_registered(self):
         return self.meta_data.is_registered()
 
-    def start_worker(self, worker_script, hostname, port, scale, method, number_of_random_walkers=1, load_backup=0):
+    def start_worker(self, worker_script, hostname_master, port_master, scale, method, number_of_random_walkers=1, load_backup=0):
         self.meta_data.host = None
         self.meta_data.port = None
 
         self.process = setup_worker(
+            self.hostname,
             worker_script,
             self.worker_id,
-            hostname,
-            port,
+            hostname_master,
+            port_master,
             scale,
             method,
             load_backup,
@@ -111,9 +116,9 @@ class WorkerInfoCollection:
     def all_workers_done(self):
         return all([worker_info.job_complete for worker_info in self.worker_info_collection.values()])
 
-    def start_workers(self, worker_script: str, hostname: str, port: int, scale: float, method: str, number_of_random_walkers: int = 1):
+    def start_workers(self, worker_script: str, hostname_master: str, port_master: int, scale: float, method: str, number_of_random_walkers: int = 1):
         for worker_info in self.worker_info_collection.values():
-            worker_info.start_worker(worker_script, hostname, port, scale, method, number_of_random_walkers)
+            worker_info.start_worker(worker_script, hostname_master, port_master, scale, method, number_of_random_walkers)
 
     def random_walker_count(self):
         return sum([worker_info.random_walker_count for worker_info in self.worker_info_collection.values()])

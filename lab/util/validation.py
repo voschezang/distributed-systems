@@ -1,6 +1,16 @@
 import os
 
 
+def assert_list(name: str, value: str) -> list:
+    items = value.split(",")
+
+    for item in items:
+        if len(item) == 0:
+            raise AssertionError(f"Invalid hostname for {name}: `{item}`")
+
+    return items
+
+
 def assert_bool(name: str, value: str) -> int:
     """
     Makes sure the value is a integer that represents a boolean, otherwise

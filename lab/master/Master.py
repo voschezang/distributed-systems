@@ -13,11 +13,11 @@ from math import ceil
 
 
 class Master(Server):
-    def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
+    def __init__(self, worker_hostnames: list, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
                  scale: float, method: str):
         super().__init__()
         self.worker_script = worker_script
-        self.n_workers = n_workers
+        self.worker_hostnames = worker_hostnames
         self.output_file = output_file
         self.method = method
         self.graph_path = graph_path
@@ -33,7 +33,6 @@ class Master(Server):
             message.ALIVE: self.handle_alive,
             message.REGISTER: self.handle_register,
             message.DEBUG: self.handle_debug,
-            message.PROGRESS: self.handle_progress,
             message.JOB_COMPLETE: self.handle_job_complete,
             message.RANDOM_WALKER_COUNT: self.handle_random_walker_count,
             message.MISSING_CHUNK: self.handle_missing_chunk,
@@ -59,10 +58,14 @@ class Master(Server):
     def get_goal_size(self):
         return self.worker_info_collection.get_total_number_of_edges() * self.scale
 
+    def send_graph_to_worker(self, worker_id):
+        data = read_file(self.worker_info_collection[worker_id].input_sub_graph_path)
+        self.send_data_to_worker(worker_id, data, message.GRAPH)
+        print(f'Worker {worker_id} received graph')
+
     def send_graphs_to_workers(self):
-        for worker_id, worker_info in self.worker_info_collection.items():
-            data = read_file(worker_info.input_sub_graph_path)
-            self.send_data_to_worker(worker_id, data, message.GRAPH)
+        for worker_id in self.worker_info_collection.keys():
+            self.send_graph_to_worker(worker_id)
 
     def process_graph(self, graph_path: str, split_graph: bool) -> [MetaData]:
         """
@@ -88,11 +91,11 @@ class Master(Server):
 
         else:
             # TODO do not duplicate data
-            for worker_id in range(self.n_workers):
+            for worker_id, hostname in enumerate(self.worker_hostnames):
                 self.worker_info_collection[worker_id] = WorkerInfo(
+                    hostname=hostname,
                     worker_id=worker_id,
                     input_sub_graph_path=graph_path,
-                    output_sub_graph_path=self.random_temp_file(f'output-worker-{worker_id}'),
                     meta_data=MetaData(
                         worker_id=worker_id,
                         number_of_edges=get_number_of_lines(graph_path),
@@ -103,14 +106,14 @@ class Master(Server):
 
     def split_graph(self, graph_path):
         f = open(graph_path, "r")
-        for worker_id, sub_graph in enumerate(read_in_chunks(f, self.n_workers)):
+        for worker_id, sub_graph in enumerate(read_in_chunks(f, len(self.worker_hostnames))):
             sub_graph_path = self.random_temp_file(f'input-worker-{worker_id}')
             write_to_file(sub_graph_path, sub_graph)
 
             self.worker_info_collection[worker_id] = WorkerInfo(
+                hostname=self.worker_hostnames[worker_id],
                 worker_id=worker_id,
                 input_sub_graph_path=sub_graph_path,
-                output_sub_graph_path=self.random_temp_file(f'output-worker-{worker_id}'),
                 meta_data=MetaData(
                     worker_id=worker_id,
                     number_of_edges=get_number_of_lines(sub_graph_path),
@@ -198,13 +201,11 @@ class Master(Server):
     def handle_debug(worker_id, debug_message):
         print(f"Worker {worker_id}: {debug_message}")
 
-    def handle_progress(self, worker_id, number_of_edges):
-        self.worker_info_collection[worker_id].progress = number_of_edges
-
     def handle_job_complete(self, worker_id):
         self.worker_info_collection[worker_id].job_complete = True
 
     def handle_random_walker_count(self, worker_id, count):
+        print(f'Worker {worker_id} has {count} random walkers')
         self.worker_info_collection[worker_id].random_walker_count = count
         self.random_walker_counts_received += 1
 
@@ -223,14 +224,15 @@ class Master(Server):
         self.worker_info_collection[worker_id].file_senders[file_type].index = index
 
     def handle_received_file(self, worker_id, file_type):
-        self.worker_info_collection[worker_id].file_senders[file_type].target_received_file = True
+        if self.worker_info_collection[worker_id].file_senders[file_type] is not None:
+            self.worker_info_collection[worker_id].file_senders[file_type].target_received_file = True
 
     def send_data_to_worker(self, worker_id: int, data: list, file_type: int):
         self.worker_info_collection[worker_id].file_senders[file_type] = FileSender(worker_id, file_type, data)
         file_sender = self.worker_info_collection[worker_id].file_senders[file_type]
 
         self.send_message_to_worker(worker_id, message.write_start_send_file(worker_id, file_type, len(file_sender.messages)))
-        while not file_sender.target_received_file:
+        while not file_sender.target_received_file or not file_sender.complete_file_send:
             if file_sender.complete_file_send:
                 self.send_message_to_worker(worker_id, message.write_end_send_file(worker_id, file_type))
                 sleep(0.1)
@@ -249,8 +251,6 @@ class Master(Server):
             self.worker_info_collection[worker_id].file_receivers[file_type].receive_chunk(index, chunk)
         except UnexpectedChunkIndex as e:
             self.send_message_to_worker(worker_id, message.write_missing_chunk(worker_id, file_type, e.expected_index))
-        except AttributeError:
-            return
 
     def handle_end_send_file(self, worker_id, file_type):
         try:
@@ -267,12 +267,7 @@ class Master(Server):
 
     def handle_backup(self, worker_id):
         new_edges = self.worker_info_collection[worker_id].file_receivers[message.BACKUP].file
-
-        for edge in new_edges:
-            if edge == '':
-                continue
-
-            self.worker_info_collection[worker_id].backup.append(edge + '\n')
+        self.worker_info_collection[worker_id].backup += new_edges
 
         self.worker_info_collection[worker_id].file_receivers[message.BACKUP] = None
 
@@ -347,6 +342,11 @@ class Master(Server):
         for worker_id in failed_workers:
             print(f"Worker {worker_id} died")
             self.worker_info_collection[worker_id].meta_data.set_connection_info(None, None)
+            self.worker_info_collection[worker_id].file_senders[message.GRAPH] = None
+            self.worker_info_collection[worker_id].file_senders[message.BACKUP] = None
+            self.worker_info_collection[worker_id].file_receivers[message.GRAPH] = None
+            self.worker_info_collection[worker_id].file_receivers[message.BACKUP] = None
+            self.worker_info_collection[worker_id].process = None
 
         print(f"Pausing workers")
         self.pause_workers()
@@ -365,8 +365,8 @@ class Master(Server):
 
             self.worker_info_collection[worker_id].start_worker(
                 worker_script=self.worker_script,
-                hostname=self.hostname,
-                port=self.port,
+                hostname_master=self.hostname,
+                port_master=self.port,
                 scale=self.scale,
                 method=self.method,
                 number_of_random_walkers=number_of_random_walkers,
@@ -383,7 +383,12 @@ class Master(Server):
         self.send_meta_data_to_workers(allow_connection_refused=True)
 
         for worker_id in failed_workers:
-            self.send_data_to_worker(worker_id, self.worker_info_collection[worker_id].backup, message.BACKUP)
+            self.send_graph_to_worker(worker_id)
+
+        for worker_id in failed_workers:
+            if len(self.worker_info_collection[worker_id].backup) > 0:
+                self.send_data_to_worker(worker_id, self.worker_info_collection[worker_id].backup[:], message.BACKUP)
+                print(f'Worker {worker_id} received backup')
 
         self.continue_workers()
         print(f"Restart successful\n")
