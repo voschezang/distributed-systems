@@ -5,7 +5,7 @@ from multiprocessing import Process
 from lab.util.ssh_connection_info import username, password
 
 from spur import SshShell
-from spur.ssh import MissingHostKey
+from spur.ssh import MissingHostKey, ShellTypes
 
 
 def run_python_script(script, *arguments):
@@ -13,7 +13,7 @@ def run_python_script(script, *arguments):
 
 
 def run_ssh_script(hostname, *arguments):
-    shell = SshShell(hostname=hostname, username=username, password=password, missing_host_key=MissingHostKey.accept)
+    shell = SshShell(hostname=hostname, username=username, password=password, missing_host_key=MissingHostKey.accept, shell_type=ShellTypes.minimal)
     shell.spawn(['./start_scaler.sh', *arguments])
 
     return shell
