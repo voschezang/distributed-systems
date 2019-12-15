@@ -1,5 +1,8 @@
 import json
 
+MAX_MESSAGE_SIZE = 1024
+GRAPH = 100
+BACKUP = 101
 
 # Status Codes
 ALIVE = 200
@@ -7,10 +10,18 @@ REGISTER = 201
 META_DATA = 202
 DEBUG = 203
 RANDOM_WALKER = 204
-PROGRESS = 205
 FINISH_JOB = 206  # Master to Worker
 JOB_COMPLETE = 207  # Response, Worker to Master
 TERMINATE = 208  # Shut down
+WORKER_FAILED = 209
+RANDOM_WALKER_COUNT = 210
+CONTINUE = 211
+IGNORE = 212
+START_SEND_FILE = 213
+FILE_CHUNK = 214
+MISSING_CHUNK = 215
+RECEIVED_FILE = 216
+END_SEND_FILE = 217
 
 
 def write(status: int, body: dict or list = None):
@@ -63,22 +74,77 @@ def write_random_walker(vertex_label: int):
     )
 
 
-def write_progress(worker_id: int, number_of_edges: int):
+def write_job(status=JOB_COMPLETE, worker_id=None):
     return write(
-        status=PROGRESS,
+        status=status,
         body={
-            'worker_id': worker_id,
-            'number_of_edges': number_of_edges
+            'worker_id': worker_id
         }
     )
 
 
-def write_job(status=JOB_COMPLETE, worker_id=None, path=None):
+def write_worker_failed():
     return write(
-        status=status,
+        status=WORKER_FAILED
+    )
+
+
+def write_random_walker_count(worker_id: int, count: int):
+    return write(
+        status=RANDOM_WALKER_COUNT,
         body={
             'worker_id': worker_id,
-            'path': path
+            'count': count
+        }
+    )
+
+
+def write_continue():
+    return write(
+        status=CONTINUE
+    )
+
+
+def write_start_send_file(worker_id: int, file_type: int, number_of_chunks: int):
+    return write(status=START_SEND_FILE, body={
+        'worker_id': worker_id,
+        'file_type': file_type,
+        'number_of_chunks': number_of_chunks
+    })
+
+
+def write_file_chunk(worker_id: int, file_type: int, index: int, chunk: str):
+    return write(status=FILE_CHUNK, body={
+        'worker_id': worker_id,
+        'file_type': file_type,
+        'index': index,
+        'chunk': chunk
+    })
+
+
+def write_missing_chunk(worker_id: int, file_type: int, index: int):
+    return write(status=MISSING_CHUNK, body={
+        'worker_id': worker_id,
+        'file_type': file_type,
+        'index': index
+    })
+
+
+def write_received_file(worker_id: int, file_type: int):
+    return write(
+        status=RECEIVED_FILE, body={
+            'worker_id': worker_id,
+            'file_type': file_type
+        }
+    )
+
+
+def write_end_send_file(worker_id: int, file_type: int):
+    return write(
+        status=END_SEND_FILE,
+        body={
+            'worker_id': worker_id,
+            'file_type': file_type
         }
     )
 
@@ -108,12 +174,32 @@ def read_random_walker(body: dict):
     return RANDOM_WALKER, body['vertex_label']
 
 
-def read_progress(body: dict):
-    return PROGRESS, body['worker_id'], body['number_of_edges']
-
-
 def read_job_complete(body: dict):
-    return JOB_COMPLETE, body['worker_id'], body['path']
+    return JOB_COMPLETE, body['worker_id']
+
+
+def read_random_walker_count(body: dict):
+    return RANDOM_WALKER_COUNT, body['worker_id'], body['count']
+
+
+def read_start_send_file(body: dict):
+    return START_SEND_FILE, body['worker_id'], body['file_type'], body['number_of_chunks']
+
+
+def read_file_chunk(body: dict):
+    return FILE_CHUNK, body['worker_id'], body['file_type'], body['index'], body['chunk']
+
+
+def read_missing_chunk(body: dict):
+    return MISSING_CHUNK, body['worker_id'], body['file_type'], body['index']
+
+
+def read_received_file(body: dict):
+    return RECEIVED_FILE, body['worker_id'], body['file_type']
+
+
+def read_end_send_file(body: dict):
+    return END_SEND_FILE, body['worker_id'], body['file_type']
 
 
 def read(message: bytes):
@@ -128,8 +214,15 @@ MESSAGE_INTERFACE = {
     META_DATA: read_meta_data,
     DEBUG: read_debug,
     RANDOM_WALKER: read_random_walker,
-    PROGRESS: read_progress,
     FINISH_JOB: read_status(FINISH_JOB),
     JOB_COMPLETE: read_job_complete,
-    TERMINATE: read_status(TERMINATE)
+    TERMINATE: read_status(TERMINATE),
+    WORKER_FAILED: read_status(WORKER_FAILED),
+    RANDOM_WALKER_COUNT: read_random_walker_count,
+    CONTINUE: read_status(CONTINUE),
+    START_SEND_FILE: read_start_send_file,
+    RECEIVED_FILE: read_received_file,
+    FILE_CHUNK: read_file_chunk,
+    MISSING_CHUNK: read_missing_chunk,
+    END_SEND_FILE: read_end_send_file
 }

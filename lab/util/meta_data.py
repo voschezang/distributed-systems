@@ -20,6 +20,9 @@ class MetaData:
     def has_vertex(self, vertex: int) -> bool:
         return self.min_vertex <= vertex <= self.max_vertex
 
+    def is_registered(self):
+        return self.host is not None and self.port is not None
+
     def to_dict(self) -> dict:
         return {
             'worker_id': self.worker_id,

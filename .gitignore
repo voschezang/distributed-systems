@@ -124,7 +124,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-### Example user template template
 ### Example user template
 
 # IntelliJ project files
@@ -141,3 +140,4 @@ gen
 *.pkl
 
 output/
+lab/util/ssh_connection_info.py

@@ -1,35 +1,61 @@
-from lab.util import command_line, message, sockets
-from lab.util.file_io import read_in_chunks, write_chunk, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, append_edge, get_number_of_lines, sort_file
+from lab.master.worker_info import WorkerInfoCollection, WorkerInfo
+from lab.util import message, sockets
+from lab.util.file_io import read_in_chunks, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, \
+    append_edge, get_number_of_lines, write_to_file, read_file
+from lab.util.file_transfer import FileSender, UnexpectedChunkIndex, FileReceiver
 from lab.util.server import Server
 from time import time, sleep
-from lab.util.meta_data import MetaData, CombinedMetaData
+from lab.util.meta_data import MetaData
 from sys import stdout
 from lab.util.distributed_graph import DistributedGraph
+from uuid import uuid4
+from math import ceil
 
 
 class Master(Server):
-    def __init__(self, n_workers: int, graph_path: str, worker_script: str, split_graph: bool, output_file: str, scale: float):
+    def __init__(self, worker_hostnames: list, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
+                 scale: float, method: str, random_walkers_per_worker: int, backup_size: int, walking_iterations: int,
+                 show_debug_messages: bool = True):
+        started_at = time()
         super().__init__()
         self.worker_script = worker_script
-        self.n_workers = n_workers
+        self.worker_hostnames = worker_hostnames
         self.output_file = output_file
+        self.method = method
         self.graph_path = graph_path
+        self.scale = scale
+        self.random_walkers_per_worker = random_walkers_per_worker
+        self.backup_size = backup_size
+        self.walking_iterations = walking_iterations
+        self.show_debug_messages = show_debug_messages
+
+        self.random_walker_counts_received = 0
 
         # Split graph into sub graphs and send them to the workers
-        self.workers = self.create_workers(graph_path, split_graph)
+        self.worker_info_collection = WorkerInfoCollection()
+        self.create_workers(graph_path, split_graph)
 
         # Can be used to handle incoming messages from the server
         self.message_interface = {
             message.ALIVE: self.handle_alive,
             message.REGISTER: self.handle_register,
             message.DEBUG: self.handle_debug,
-            message.PROGRESS: self.handle_progress,
-            message.JOB_COMPLETE: self.handle_job_complete
+            message.JOB_COMPLETE: self.handle_job_complete,
+            message.RANDOM_WALKER_COUNT: self.handle_random_walker_count,
+            message.MISSING_CHUNK: self.handle_missing_chunk,
+            message.RECEIVED_FILE: self.handle_received_file,
+            message.START_SEND_FILE: self.handle_start_send_file,
+            message.END_SEND_FILE: self.handle_end_send_file,
+            message.FILE_CHUNK: self.handle_file_chunk
         }
 
         self.register_workers()
         self.send_meta_data_to_workers()
-        self.goal_size = self.get_goal_size(scale)
+        self.send_graphs_to_workers()
+
+        self.goal_size = self.get_goal_size()
+        print(f"Master setup time: {time() - started_at}")
+        self.print_params()
 
         # Run master until stopped
         try:
@@ -38,8 +64,35 @@ class Master(Server):
             self.terminate_workers()
             self.server.terminate()
 
-    def get_goal_size(self, scale: float):
-        return sum([get_number_of_lines(worker['sub-graph-path']) for worker in self.workers.values()]) * scale
+    def print_params(self):
+        print(f"Method: {self.method}")
+        print(f"Scale: {self.scale}")
+
+        if self.method == "random_walk":
+            print(f"Number of workers: {len(self.worker_hostnames)}")
+            print(f"Random walker per worker: {self.random_walkers_per_worker}")
+            print(f"Backup size: {self.backup_size}")
+            print(f"Walking iterations: {self.walking_iterations}")
+
+        print(f"Output file: {self.output_file}")
+        print(f"Goal size: {self.goal_size}")
+        print()
+
+    def debug(self, message: str):
+        if self.show_debug_messages:
+            print(message)
+
+    def get_goal_size(self):
+        return self.worker_info_collection.get_total_number_of_edges() * self.scale
+
+    def send_graph_to_worker(self, worker_id):
+        data = read_file(self.worker_info_collection[worker_id].input_sub_graph_path)
+        self.send_data_to_worker(worker_id, data, message.GRAPH)
+        self.debug(f'Worker {worker_id} received graph')
+
+    def send_graphs_to_workers(self):
+        for worker_id in self.worker_info_collection.keys():
+            self.send_graph_to_worker(worker_id)
 
     def process_graph(self, graph_path: str, split_graph: bool) -> [MetaData]:
         """
@@ -52,59 +105,53 @@ class Master(Server):
 
         if split_graph:
             # Split graph into self.n_workers sub graphs
-            workers = self.split_graph(graph_path)
+            self.split_graph(graph_path)
 
             # Add reverse edges to sub graphs
-            self.make_sub_graphs_bidirectional(graph_path, workers)
+            self.make_sub_graphs_bidirectional(graph_path)
 
             # Sort sub graphs
-            self.sort_sub_graphs(workers)
+            self.worker_info_collection.sort_sub_graphs()
 
             # Update meta data
-            self.update_meta_data(workers)
+            self.worker_info_collection.update_meta_data()
 
         else:
             # TODO do not duplicate data
-            workers = {}
-            for worker_id in range(self.n_workers):
-                workers[worker_id] = {
-                    'sub-graph-path': graph_path,
-                    'meta-data': MetaData(
+            for worker_id, hostname in enumerate(self.worker_hostnames):
+                self.worker_info_collection[worker_id] = WorkerInfo(
+                    hostname=hostname,
+                    worker_id=worker_id,
+                    input_sub_graph_path=graph_path,
+                    meta_data=MetaData(
                         worker_id=worker_id,
                         number_of_edges=get_number_of_lines(graph_path),
-                        min_vertex=get_start_vertex(
-                            get_first_line(graph_path)),
+                        min_vertex=get_start_vertex(get_first_line(graph_path)),
                         max_vertex=get_start_vertex(get_last_line(graph_path))
                     )
-                }
+                )
 
-        return workers
-
-    def split_graph(self, graph_path) -> dict:
-        workers = {}
-
+    def split_graph(self, graph_path):
         f = open(graph_path, "r")
-        for worker_id, sub_graph in enumerate(read_in_chunks(f, self.n_workers)):
-            sub_graph_path = write_chunk(worker_id, sub_graph)
+        for worker_id, sub_graph in enumerate(read_in_chunks(f, len(self.worker_hostnames))):
+            sub_graph_path = self.random_temp_file(f'input-worker-{worker_id}')
+            write_to_file(sub_graph_path, sub_graph)
 
-            workers[worker_id] = {
-                'sub-graph-path': sub_graph_path,
-                'meta-data': MetaData(
+            self.worker_info_collection[worker_id] = WorkerInfo(
+                hostname=self.worker_hostnames[worker_id],
+                worker_id=worker_id,
+                input_sub_graph_path=sub_graph_path,
+                meta_data=MetaData(
                     worker_id=worker_id,
                     number_of_edges=get_number_of_lines(sub_graph_path),
-                    min_vertex=get_start_vertex(
-                        get_first_line(sub_graph_path)),
+                    min_vertex=get_start_vertex(get_first_line(sub_graph_path)),
                     max_vertex=get_start_vertex(get_last_line(sub_graph_path))
                 )
-            }
+            )
         f.close()
 
-        return workers
-
-    @staticmethod
-    def make_sub_graphs_bidirectional(graph_path: str, workers: dict):
-        combined_meta_data = CombinedMetaData(
-            [worker['meta-data'] for worker in workers.values()])
+    def make_sub_graphs_bidirectional(self, graph_path: str):
+        combined_meta_data = self.worker_info_collection.get_combined_meta_data()
 
         f = open(graph_path, "r")
         for edge in read_as_reversed_edges(f):
@@ -119,49 +166,31 @@ class Master(Server):
                     start_vertex)
 
             append_edge(
-                path=workers[worker_id]['sub-graph-path'],
+                path=self.worker_info_collection[worker_id].input_sub_graph_path,
                 edge=edge
             )
         f.close()
 
-    @staticmethod
-    def sort_sub_graphs(workers: dict):
-        for worker in workers.values():
-            sort_file(worker['sub-graph-path'])
-
-    @staticmethod
-    def update_meta_data(workers: dict):
-        for worker_id in workers.keys():
-            sub_graph_path = workers[worker_id]['sub-graph-path']
-
-            workers[worker_id]['meta-data'] = MetaData(
-                worker_id=worker_id,
-                number_of_edges=get_number_of_lines(sub_graph_path),
-                min_vertex=get_start_vertex(get_first_line(sub_graph_path)),
-                max_vertex=get_start_vertex(get_last_line(sub_graph_path))
-            )
-
-    def create_workers(self, graph_path, split_graph) -> dict:
+    def create_workers(self, graph_path, split_graph):
         """
         Creates `self.n_workers` workers
         :return: Dictionary containing info about each worker
         """
-        workers = self.process_graph(graph_path, split_graph)
+        self.process_graph(graph_path, split_graph)
+        self.worker_info_collection.start_workers(
+            self.worker_script,
+            self.hostname,
+            self.port,
+            self.scale,
+            self.method,
+            self.random_walkers_per_worker,
+            self.backup_size,
+            self.walking_iterations
+        )
 
-        for worker_id in workers.keys():
-            workers[worker_id]['progress'] = 0
-            workers[worker_id]['last-alive'] = None
-            workers[worker_id]['job-complete'] = False
-            workers[worker_id]['scaled-sub-graph-path'] = None
-            workers[worker_id]['process'] = command_line.setup_worker(
-                self.worker_script,
-                worker_id,
-                self.hostname,
-                self.port,
-                workers[worker_id]['sub-graph-path']
-            )
-
-        return workers
+    @staticmethod
+    def random_temp_file(prefix: str):
+        return f'/tmp/{prefix}-{str(uuid4())}.txt'
 
     def terminate_workers(self):
         """
@@ -174,9 +203,7 @@ class Master(Server):
         # TODO use confirmation msg
         sleep(0.5)
         self.handle_queue()
-        for worker_id, worker in self.workers.items():
-            if worker['process'] is not None:
-                worker['process'].terminate()
+        self.worker_info_collection.terminate_workers()
 
     def handle_alive(self, worker_id):
         """
@@ -185,8 +212,7 @@ class Master(Server):
         :param worker_id: Id of worker
         """
 
-        self.workers[worker_id]['last-alive'] = time()
-        # print(f"Worker {worker_id} is still alive")
+        self.worker_info_collection[worker_id].last_alive = time()
 
     def handle_register(self, worker_id, host, port):
         """
@@ -197,76 +223,238 @@ class Master(Server):
         :param port: Port of worker
         """
 
-        self.workers[worker_id]['meta-data'].set_connection_info(host, port)
-        self.workers[worker_id]['last-alive'] = time()
-        print(f"Registered worker {worker_id} on {host}:{port}")
+        self.worker_info_collection[worker_id].meta_data.set_connection_info(host, port)
+        self.handle_alive(worker_id)
+        self.debug(f"Registered worker {worker_id} on {host}:{port}")
 
-    def handle_debug(self, worker_id, debug_message):
+    @staticmethod
+    def handle_debug(worker_id, debug_message):
         print(f"Worker {worker_id}: {debug_message}")
 
-    def handle_progress(self, worker_id, number_of_edges):
-        self.workers[worker_id]['progress'] = number_of_edges
+    def handle_job_complete(self, worker_id):
+        self.worker_info_collection[worker_id].job_complete = True
 
-    def handle_job_complete(self, worker_id, output_path):
-        self.workers[worker_id]['job-complete'] = True
-        print(f'output_path {output_path}')
-        self.workers[worker_id]['scaled-sub-graph-path'] = output_path
+    def handle_random_walker_count(self, worker_id, count):
+        self.debug(f'Worker {worker_id} has {count} random walkers')
+        self.worker_info_collection[worker_id].random_walker_count = count
+        self.random_walker_counts_received += 1
 
     def register_workers(self):
-        for i in range(len(self.workers)):
+        for i in range(len(self.worker_info_collection)):
             status, *args = self.get_message_from_queue()
             self.handle_register(*args)
 
-    def broadcast(self, message):
-        for worker_id, worker in self.workers.items():
-            sockets.send_message(
-                *worker['meta-data'].get_connection_info(), message)
-
-    def send_meta_data_to_workers(self):
-        self.broadcast(message.write_meta_data(
-            [worker['meta-data'].to_dict()
-             for worker in self.workers.values()])
+    def send_message_to_worker(self, worker_id, message: bytes):
+        sockets.send_message(
+            *self.worker_info_collection[worker_id].meta_data.get_connection_info(),
+            message
         )
 
+    def handle_missing_chunk(self, worker_id, file_type, index):
+        self.worker_info_collection[worker_id].file_senders[file_type].index = index
+
+    def handle_received_file(self, worker_id, file_type):
+        if self.worker_info_collection[worker_id].file_senders[file_type] is not None:
+            self.worker_info_collection[worker_id].file_senders[file_type].target_received_file = True
+
+    def send_data_to_worker(self, worker_id: int, data: list, file_type: int):
+        self.worker_info_collection[worker_id].file_senders[file_type] = FileSender(worker_id, file_type, data)
+        file_sender = self.worker_info_collection[worker_id].file_senders[file_type]
+
+        self.send_message_to_worker(worker_id, message.write_start_send_file(worker_id, file_type, len(file_sender.messages)))
+        while not file_sender.target_received_file or not file_sender.complete_file_send:
+            if file_sender.complete_file_send:
+                self.send_message_to_worker(worker_id, message.write_end_send_file(worker_id, file_type))
+                sleep(0.1)
+            else:
+                self.send_message_to_worker(worker_id, file_sender.get_next_message())
+
+            self.handle_queue()
+
+        self.worker_info_collection[worker_id].file_senders[file_type] = None
+
+    def handle_start_send_file(self, worker_id, file_type, number_of_chunks):
+        self.worker_info_collection[worker_id].file_receivers[file_type] = FileReceiver(number_of_chunks)
+
+    def handle_file_chunk(self, worker_id, file_type, index, chunk):
+        try:
+            self.worker_info_collection[worker_id].file_receivers[file_type].receive_chunk(index, chunk)
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_worker(worker_id, message.write_missing_chunk(worker_id, file_type, e.expected_index))
+
+    def handle_end_send_file(self, worker_id, file_type):
+        try:
+            self.worker_info_collection[worker_id].file_receivers[file_type].handle_end_send_file()
+            self.send_message_to_worker(worker_id, message.write_received_file(worker_id, file_type))
+
+            if file_type == message.BACKUP:
+                self.handle_backup(worker_id)
+
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_worker(worker_id, message.write_missing_chunk(worker_id, file_type, e.expected_index))
+        except AttributeError:
+            return
+
+    def handle_backup(self, worker_id):
+        new_edges = self.worker_info_collection[worker_id].file_receivers[message.BACKUP].file
+        self.worker_info_collection[worker_id].backup += new_edges
+
+        self.worker_info_collection[worker_id].file_receivers[message.BACKUP] = None
+
+    def broadcast(self, message, allow_connection_refused: bool = False):
+        for worker_info in self.worker_info_collection.values():
+            if worker_info.is_registered():
+                if allow_connection_refused:
+                    try:
+                        sockets.send_message(*worker_info.meta_data.get_connection_info(), message)
+                    except ConnectionRefusedError:
+                        continue
+                else:
+                    sockets.send_message(*worker_info.meta_data.get_connection_info(), message)
+
+    def send_meta_data_to_workers(self, allow_connection_refused: bool = False):
+        self.broadcast(message.write_meta_data([
+            worker_info.meta_data.to_dict() for worker_info in self.worker_info_collection.values()
+        ]), allow_connection_refused)
+
     def total_progress(self):
-        return sum([worker['progress'] for worker in self.workers.values()])
+        return self.worker_info_collection.get_progress()
 
     def print_progress(self):
         stdout.write('\r')
-        stdout.write(
-            f"{self.total_progress() / self.goal_size * 100:0.5f}% \t")
+        stdout.write(f"{self.total_progress() / self.goal_size * 100:0.5f}% \t")
         stdout.flush()
 
-    def all_workers_done(self):
-        return all((worker['job-complete'] for worker in self.workers.values()))
-
     def wait_for_workers_to_complete(self):
-        while not self.all_workers_done():
+        while not self.worker_info_collection.all_workers_done():
             sleep(0.01)
             self.handle_queue()
 
     def create_graph(self):
         graph = DistributedGraph(distributed=False)
-        for worker in self.workers.values():
-            graph.load_from_file(worker['scaled-sub-graph-path'])
+        for worker_info in self.worker_info_collection.values():
+            graph.load_from_list(worker_info.backup)
 
         return graph
+
+    def wait_for_random_walker_counts(self, expected_number: int):
+        while self.random_walker_counts_received < expected_number:
+            self.handle_queue()
+            sleep(0.01)
+        self.random_walker_counts_received = 0
+
+    def wait_for_worker_to_register(self, worker_id):
+        while not self.worker_info_collection[worker_id].is_registered():
+            self.handle_queue()
+            sleep(0.01)
+
+    def pause_workers(self):
+        self.broadcast(message.write_worker_failed(), allow_connection_refused=True)
+
+    def continue_workers(self):
+        self.broadcast(message.write_continue(), allow_connection_refused=True)
+
+    def get_failed_workers(self):
+        if len([worker_id for worker_id in self.worker_info_collection.keys() if not self.worker_info_collection[worker_id].is_alive()]) == 0:
+            return []
+
+        return [worker_id for worker_id, worker_info in self.worker_info_collection.items() if not sockets.is_alive(*worker_info.meta_data.get_connection_info())]
+
+    def control_workers(self):
+        started_at = time()
+        failed_workers = self.get_failed_workers()
+
+        if len(failed_workers) == 0:
+            return
+
+        self.debug("\n\n")
+        print("ERROR: A WORKER CRASHED")
+
+        # Update connection info
+        for worker_id in failed_workers:
+            self.debug(f"Worker {worker_id} died")
+            self.worker_info_collection[worker_id].meta_data.set_connection_info(None, None)
+            self.worker_info_collection[worker_id].file_senders[message.GRAPH] = None
+            self.worker_info_collection[worker_id].file_senders[message.BACKUP] = None
+            self.worker_info_collection[worker_id].file_receivers[message.GRAPH] = None
+            self.worker_info_collection[worker_id].file_receivers[message.BACKUP] = None
+            self.worker_info_collection[worker_id].process = None
+            self.worker_info_collection[worker_id].random_walker_count = 0
+
+        self.debug(f"Pausing workers")
+        self.pause_workers()
+
+        self.debug("Waiting for random walker counts")
+        self.wait_for_random_walker_counts(len(self.worker_info_collection) - len(failed_workers))
+
+        random_walkers_to_restart = len(self.worker_info_collection) * self.random_walkers_per_worker - self.worker_info_collection.random_walker_count()
+
+        for worker_id in failed_workers:
+            self.debug(f"Restarting worker {worker_id}")
+
+            number_of_random_walkers = ceil(random_walkers_to_restart / len(failed_workers))
+            if number_of_random_walkers < 0:
+                number_of_random_walkers = 0
+
+            self.worker_info_collection[worker_id].start_worker(
+                worker_script=self.worker_script,
+                hostname_master=self.hostname,
+                port_master=self.port,
+                scale=self.scale,
+                method=self.method,
+
+                number_of_random_walkers=number_of_random_walkers,
+                load_backup=1,
+                backup_size=self.backup_size,
+                walking_iterations=self.walking_iterations
+            )
+
+            random_walkers_to_restart -= number_of_random_walkers
+
+        for worker_id in failed_workers:
+            self.debug(f"Waiting for worker {worker_id} to register")
+            self.wait_for_worker_to_register(worker_id)
+
+        self.debug(f"Sending updated meta-data to workers")
+        self.send_meta_data_to_workers(allow_connection_refused=True)
+
+        for worker_id in failed_workers:
+            self.send_graph_to_worker(worker_id)
+
+        for worker_id in failed_workers:
+            if len(self.worker_info_collection[worker_id].backup) > 0:
+                self.send_data_to_worker(worker_id, self.worker_info_collection[worker_id].backup[:], message.BACKUP)
+                self.debug(f'Worker {worker_id} received backup')
+
+        self.continue_workers()
+        self.debug(f"Restart successful\n")
+        print(f"Restarted workers after {time() - started_at} seconds")
 
     def run(self):
         """
         Runs the master
         """
+        self.broadcast(message.write_continue())
+        started_at = time()
 
-        while self.total_progress() < self.goal_size:
-            sleep(0.1)
-            self.handle_queue()
-            self.print_progress()
-        print("\nJob complete")
+        if self.method == "random_walk":
+            while self.total_progress() < self.goal_size:
+                sleep(0.1)
+                self.handle_queue()
 
-        self.broadcast(message.write_job(message.FINISH_JOB))
+                if self.show_debug_messages:
+                    self.print_progress()
+
+                self.control_workers()
+            self.broadcast(message.write_job(message.FINISH_JOB))
+
         self.wait_for_workers_to_complete()
+        print(f"\nEdges received: {self.total_progress()}")
+        print(f"Job complete after {time() - started_at}")
+
         self.terminate_workers()
         self.server.terminate()
 
         graph = self.create_graph()
         graph.write_to_file(self.output_file)
+        print(f"Master runtime: {time() - started_at}")

@@ -1,6 +1,16 @@
 import os
 
 
+def assert_list(name: str, value: str) -> list:
+    items = value.split(",")
+
+    for item in items:
+        if len(item) == 0:
+            raise AssertionError(f"Invalid hostname for {name}: `{item}`")
+
+    return items
+
+
 def assert_bool(name: str, value: str) -> int:
     """
     Makes sure the value is a integer that represents a boolean, otherwise
@@ -40,14 +50,20 @@ def assert_positive_int(name: str, value: str) -> int:
     :param value: Value
     :return: Value as integer
     """
-    if not (value.isdigit() and int(value) > 0):
+    try:
+        int_value = int(value)
+    except ValueError:
         raise AssertionError(
             "Expected a positive integer for {}, but got `{}`".format(name, value))
 
-    return int(value)
+    if int_value < 1:
+        AssertionError(
+            "Expected a positive integer for {}, but got `{}`".format(name, value))
+
+    return int_value
 
 
-def assert_pos_float(name: str, value: str) -> int:
+def assert_pos_float(name: str, value: str) -> float:
     """
     Makes sure the value is a positive float, otherwise raises AssertionError
 
@@ -97,6 +113,13 @@ def assert_path(name: str, value: str) -> str:
     return value
 
 
+def assert_method(name: str, value: str) -> str:
+    if value == "random_walk" or value == "random_edge":
+        return value
+    else:
+        raise AssertionError("Invalid method for {}: `{}`".format(name, value))
+
+
 def assert_host(name: str, value: str) -> str:
     """
     Makes sure the value is an available host, otherwise raises AssertionError
@@ -124,7 +147,7 @@ def assert_standard_scale(name: str, value: str) -> float:
     return scale
 
 
-def assert_master_type(name: str, value: str) -> str:
+def assert_master_type(name: str, value: str):
     """
     Makes sure the value represents a Master class otherwise raises AssertionError
 

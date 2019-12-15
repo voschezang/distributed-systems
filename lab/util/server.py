@@ -1,6 +1,7 @@
 from multiprocessing import Process, Queue
 from lab.util import message
 from lab.util import sockets
+from json.decoder import JSONDecodeError
 
 
 class ServerProcess:
@@ -38,10 +39,13 @@ class Server:
 
     def handle_queue(self):
         while self.message_in_queue():
-            status, *args = self.get_message_from_queue()
-            assert status in self.message_interface.keys(), \
-                f'Unknown status {status}'
-            self.message_interface[status](*args)
+            try:
+                status, *args = self.get_message_from_queue()
+                assert status in self.message_interface.keys(), \
+                    f'Unknown status {status}'
+                self.message_interface[status](*args)
+            except JSONDecodeError:
+                continue
 
     def get_message_from_queue(self) -> [str]:
         """

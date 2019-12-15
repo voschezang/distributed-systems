@@ -44,7 +44,7 @@ class Client:
         sockets.send_message(host, port, message_to_send)
 
 
-class HearbeatDaemon(Client):
+class HeartbeatDaemon(Client):
     """ Daemon process that periodically pings Master to indicate the
     corresponding worker is alive.
     """
@@ -54,7 +54,11 @@ class HearbeatDaemon(Client):
         super().__init__(worker_id, master_host, master_port)
 
         while True:
-            self.send_message_to_master(message.write_alive(self.worker_id))
+            try:
+                self.send_message_to_master(message.write_alive(self.worker_id))
+            except ConnectionRefusedError:
+                return
+
             sleep(wait_time)
 
 
@@ -62,12 +66,10 @@ class WorkerInterface(Client, Server):
     """ Actually an abstract base class
     """
 
-    def __init__(self, worker_id: int, master_host: str, master_port: int,
-                 graph_path: str):
+    def __init__(self, worker_id: int, master_host: str, master_port: int):
         super().__init__(worker_id, master_host, master_port)
         self.re_init()  # init Server
 
-        self.graph_path = graph_path
         self.cancel = False
 
         # Register self at master
@@ -76,7 +78,7 @@ class WorkerInterface(Client, Server):
         # Wait for the meta data of the other workers
         self.combined_meta_data: CombinedMetaData = self.receive_meta_data()
 
-        self.init_hearbeat_daemon(wait_time=1)
+        self.init_heartbeat_daemon(wait_time=0.5)
 
     def run(self):
         raise NotImplementedError()
@@ -88,7 +90,7 @@ class WorkerInterface(Client, Server):
         self.cancel = True
 
     def handle_terminate(self):
-        self.hearbeat_daemon.terminate()
+        self.heartbeat_daemon.terminate()
         self.server.terminate()
 
     def receive_meta_data(self) -> CombinedMetaData:
@@ -117,12 +119,12 @@ class WorkerInterface(Client, Server):
             self.port
         ))
 
-    def send_job_complete(self, path):
+    def send_job_complete(self):
         """ Sends a JOB_COMPLETE to master
         """
 
         self.send_message_to_master(
-            message.write_job(message.JOB_COMPLETE, self.worker_id, path))
+            message.write_job(message.JOB_COMPLETE, self.worker_id))
 
     def send_debug_message(self, debug_message: str):
         self.send_message_to_master(message.write_debug(
@@ -130,7 +132,7 @@ class WorkerInterface(Client, Server):
             debug_message
         ))
 
-    def init_hearbeat_daemon(self, wait_time=1):
-        self.hearbeat_daemon = Process(target=HearbeatDaemon, args=(
+    def init_heartbeat_daemon(self, wait_time: float = 1.0):
+        self.heartbeat_daemon = Process(target=HeartbeatDaemon, args=(
             self.worker_id, self.master_host, self.master_port, wait_time))
-        self.hearbeat_daemon.start()
+        self.heartbeat_daemon.start()
