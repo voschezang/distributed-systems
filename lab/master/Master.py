@@ -277,6 +277,9 @@ class Master(Server):
         self.worker_info_collection[worker_id].file_receivers[file_type] = FileReceiver(number_of_chunks)
 
     def handle_file_chunk(self, worker_id, file_type, index, chunk):
+        if self.worker_info_collection[worker_id].file_receivers[file_type] is None:
+            return
+
         try:
             self.worker_info_collection[worker_id].file_receivers[file_type].receive_chunk(index, chunk)
         except UnexpectedChunkIndex as e:
