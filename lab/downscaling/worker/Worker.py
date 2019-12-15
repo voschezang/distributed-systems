@@ -6,12 +6,14 @@ from numpy import array
 from lab.util import message, file_io, validation
 from lab.util.file_transfer import FileReceiver, UnexpectedChunkIndex, FileSender
 from lab.util.meta_data import CombinedMetaData, MetaData
-from time import sleep
+from time import sleep, time
 from typing import Dict
 
 
 class Worker(WorkerInterface):
-    def __init__(self, worker_id: int, master_host: str, master_port: int, scale: float, method: str, load_backup: bool, number_of_random_walkers: int):
+    def __init__(self, worker_id: int, master_host: str, master_port: int, scale: float, method: str, load_backup: bool, number_of_random_walkers: int, backup_size: int, walking_iterations: int):
+        started_at = time()
+
         super().__init__(worker_id, master_host, master_port)
 
         self.message_interface = {
@@ -28,6 +30,8 @@ class Worker(WorkerInterface):
         }
 
         self.running = False
+        self.backup_size = backup_size
+        self.walking_iterations = walking_iterations
 
         self.number_of_random_walkers = number_of_random_walkers
         self.add_random_walker_at = []
@@ -48,6 +52,7 @@ class Worker(WorkerInterface):
                 vertex1_label, vertex2_label = file_io.parse_to_edge(line)
                 self.edges.append(Edge(Vertex(vertex1_label), Vertex(vertex2_label)))
             self.edges = array(self.edges)
+            self.send_debug_message(f"Setup time: {time() - started_at}")
             self.wait_until_continue()
             self.run_random_edge()
         elif method == "random_walk":
@@ -65,6 +70,7 @@ class Worker(WorkerInterface):
             else:
                 self.collected_edges = {}
 
+            self.send_debug_message(f"Setup time: {time() - started_at}")
             self.wait_until_continue()
             self.run_random_walk()
 
@@ -192,45 +198,34 @@ class Worker(WorkerInterface):
         Runs the worker
         """
 
+        started_at = time()
         new_edges = []
 
-        die_after_n_steps = randint(500000, 1500000)
-
-        step = 0
         while not self.cancel:
             self.handle_queue()
 
-            success = False
-            for random_walker in self.random_walkers:
-                try:
-                    edge = random_walker.step()
-
-                    if str(edge) not in self.collected_edges:
-                        self.collected_edges[str(edge)] = True
-                        new_edges.append(str(edge) + "\n")
-
-                    success = True
-                except ForeignVertexException:
+            for _ in range(self.walking_iterations):
+                for random_walker in self.random_walkers:
                     try:
-                        self.send_random_walker_message(random_walker.vertex)
-                    except ConnectionRefusedError:
-                        continue
+                        edge = random_walker.step()
 
-                    self.random_walkers.remove(random_walker)
-                    success = True
+                        if str(edge) not in self.collected_edges:
+                            self.collected_edges[str(edge)] = True
+                            new_edges.append(str(edge) + "\n")
+                    except ForeignVertexException:
+                        try:
+                            self.send_random_walker_message(random_walker.vertex)
+                        except ConnectionRefusedError:
+                            continue
 
-            if success:
-                step += 1
+                        self.random_walkers.remove(random_walker)
 
-            if len(new_edges) > 100:
+            if len(new_edges) > self.backup_size:
                 self.send_backup_to_master(new_edges)
                 new_edges = []
-
-            if step > die_after_n_steps:
-                self.handle_terminate()
-                return
 
         if len(new_edges) > 0:
             self.send_backup_to_master(new_edges)
 
+        self.send_debug_message(f"Runtime: {time() - started_at}")
         self.send_job_complete()

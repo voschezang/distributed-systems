@@ -14,7 +14,9 @@ from math import ceil
 
 class Master(Server):
     def __init__(self, worker_hostnames: list, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
-                 scale: float, method: str):
+                 scale: float, method: str, random_walkers_per_worker: int, backup_size: int, walking_iterations: int,
+                 show_debug_messages: bool = True):
+        started_at = time()
         super().__init__()
         self.worker_script = worker_script
         self.worker_hostnames = worker_hostnames
@@ -22,6 +24,11 @@ class Master(Server):
         self.method = method
         self.graph_path = graph_path
         self.scale = scale
+        self.random_walkers_per_worker = random_walkers_per_worker
+        self.backup_size = backup_size
+        self.walking_iterations = walking_iterations
+        self.show_debug_messages = show_debug_messages
+
         self.random_walker_counts_received = 0
 
         # Split graph into sub graphs and send them to the workers
@@ -47,6 +54,8 @@ class Master(Server):
         self.send_graphs_to_workers()
 
         self.goal_size = self.get_goal_size()
+        print(f"Master setup time: {time() - started_at}")
+        self.print_params()
 
         # Run master until stopped
         try:
@@ -55,13 +64,31 @@ class Master(Server):
             self.terminate_workers()
             self.server.terminate()
 
+    def print_params(self):
+        print(f"Method: {self.method}")
+        print(f"Scale: {self.scale}")
+
+        if self.method == "random_walk":
+            print(f"Number of workers: {len(self.worker_hostnames)}")
+            print(f"Random walker per worker: {self.random_walkers_per_worker}")
+            print(f"Backup size: {self.backup_size}")
+            print(f"Walking iterations: {self.walking_iterations}")
+
+        print(f"Output file: {self.output_file}")
+        print(f"Goal size: {self.goal_size}")
+        print()
+
+    def debug(self, message: str):
+        if self.show_debug_messages:
+            print(message)
+
     def get_goal_size(self):
         return self.worker_info_collection.get_total_number_of_edges() * self.scale
 
     def send_graph_to_worker(self, worker_id):
         data = read_file(self.worker_info_collection[worker_id].input_sub_graph_path)
         self.send_data_to_worker(worker_id, data, message.GRAPH)
-        print(f'Worker {worker_id} received graph')
+        self.debug(f'Worker {worker_id} received graph')
 
     def send_graphs_to_workers(self):
         for worker_id in self.worker_info_collection.keys():
@@ -155,7 +182,10 @@ class Master(Server):
             self.hostname,
             self.port,
             self.scale,
-            self.method
+            self.method,
+            self.random_walkers_per_worker,
+            self.backup_size,
+            self.walking_iterations
         )
 
     @staticmethod
@@ -195,7 +225,7 @@ class Master(Server):
 
         self.worker_info_collection[worker_id].meta_data.set_connection_info(host, port)
         self.handle_alive(worker_id)
-        print(f"Registered worker {worker_id} on {host}:{port}")
+        self.debug(f"Registered worker {worker_id} on {host}:{port}")
 
     @staticmethod
     def handle_debug(worker_id, debug_message):
@@ -205,7 +235,7 @@ class Master(Server):
         self.worker_info_collection[worker_id].job_complete = True
 
     def handle_random_walker_count(self, worker_id, count):
-        print(f'Worker {worker_id} has {count} random walkers')
+        self.debug(f'Worker {worker_id} has {count} random walkers')
         self.worker_info_collection[worker_id].random_walker_count = count
         self.random_walker_counts_received += 1
 
@@ -331,33 +361,36 @@ class Master(Server):
         return [worker_id for worker_id, worker_info in self.worker_info_collection.items() if not sockets.is_alive(*worker_info.meta_data.get_connection_info())]
 
     def control_workers(self):
+        started_at = time()
         failed_workers = self.get_failed_workers()
 
         if len(failed_workers) == 0:
             return
 
-        print("\n\n")
+        self.debug("\n\n")
+        print("ERROR: A WORKER CRASHED")
 
         # Update connection info
         for worker_id in failed_workers:
-            print(f"Worker {worker_id} died")
+            self.debug(f"Worker {worker_id} died")
             self.worker_info_collection[worker_id].meta_data.set_connection_info(None, None)
             self.worker_info_collection[worker_id].file_senders[message.GRAPH] = None
             self.worker_info_collection[worker_id].file_senders[message.BACKUP] = None
             self.worker_info_collection[worker_id].file_receivers[message.GRAPH] = None
             self.worker_info_collection[worker_id].file_receivers[message.BACKUP] = None
             self.worker_info_collection[worker_id].process = None
+            self.worker_info_collection[worker_id].random_walker_count = 0
 
-        print(f"Pausing workers")
+        self.debug(f"Pausing workers")
         self.pause_workers()
 
-        print("Waiting for random walker counts")
+        self.debug("Waiting for random walker counts")
         self.wait_for_random_walker_counts(len(self.worker_info_collection) - len(failed_workers))
 
-        random_walkers_to_restart = len(self.worker_info_collection) - self.worker_info_collection.random_walker_count()
+        random_walkers_to_restart = len(self.worker_info_collection) * self.random_walkers_per_worker - self.worker_info_collection.random_walker_count()
 
         for worker_id in failed_workers:
-            print(f"Restarting worker {worker_id}")
+            self.debug(f"Restarting worker {worker_id}")
 
             number_of_random_walkers = ceil(random_walkers_to_restart / len(failed_workers))
             if number_of_random_walkers < 0:
@@ -369,17 +402,20 @@ class Master(Server):
                 port_master=self.port,
                 scale=self.scale,
                 method=self.method,
+
                 number_of_random_walkers=number_of_random_walkers,
-                load_backup=1
+                load_backup=1,
+                backup_size=self.backup_size,
+                walking_iterations=self.walking_iterations
             )
 
             random_walkers_to_restart -= number_of_random_walkers
 
         for worker_id in failed_workers:
-            print(f"Waiting for worker {worker_id} to register")
+            self.debug(f"Waiting for worker {worker_id} to register")
             self.wait_for_worker_to_register(worker_id)
 
-        print(f"Sending updated meta-data to workers")
+        self.debug(f"Sending updated meta-data to workers")
         self.send_meta_data_to_workers(allow_connection_refused=True)
 
         for worker_id in failed_workers:
@@ -388,29 +424,37 @@ class Master(Server):
         for worker_id in failed_workers:
             if len(self.worker_info_collection[worker_id].backup) > 0:
                 self.send_data_to_worker(worker_id, self.worker_info_collection[worker_id].backup[:], message.BACKUP)
-                print(f'Worker {worker_id} received backup')
+                self.debug(f'Worker {worker_id} received backup')
 
         self.continue_workers()
-        print(f"Restart successful\n")
+        self.debug(f"Restart successful\n")
+        print(f"Restarted workers after {time() - started_at} seconds")
 
     def run(self):
         """
         Runs the master
         """
         self.broadcast(message.write_continue())
+        started_at = time()
 
         if self.method == "random_walk":
             while self.total_progress() < self.goal_size:
                 sleep(0.1)
                 self.handle_queue()
-                self.print_progress()
+
+                if self.show_debug_messages:
+                    self.print_progress()
+
                 self.control_workers()
-            print("\nJob complete")
             self.broadcast(message.write_job(message.FINISH_JOB))
 
         self.wait_for_workers_to_complete()
+        print(f"\nEdges received: {self.total_progress()}")
+        print(f"Job complete after {time() - started_at}")
+
         self.terminate_workers()
         self.server.terminate()
 
         graph = self.create_graph()
         graph.write_to_file(self.output_file)
+        print(f"Master runtime: {time() - started_at}")

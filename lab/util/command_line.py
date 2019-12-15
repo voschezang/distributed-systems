@@ -19,7 +19,7 @@ def run_ssh_script(hostname, *arguments):
     return shell
 
 
-def setup_worker(hostname_worker, script, worker_id, hostname_master, port_master, scale, method, load_backup, number_of_random_walkers):
+def setup_worker(hostname_worker, script, worker_id, hostname_master, port_master, scale, method, load_backup, number_of_random_walkers, backup_size, walking_iterations):
     # return run_python_script(
     #     script,
     #     '--worker-id', str(worker_id),
@@ -40,6 +40,8 @@ def setup_worker(hostname_worker, script, worker_id, hostname_master, port_maste
         '--scale', str(scale),
         '--method', method,
         '--load-backup', str(load_backup),
-        '--n-random-walkers', str(number_of_random_walkers)
+        '--n-random-walkers', str(number_of_random_walkers),
+        '--backup-size', str(backup_size),
+        '--walking-iterations', str(walking_iterations)
     )
 

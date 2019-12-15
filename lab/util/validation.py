@@ -50,11 +50,17 @@ def assert_positive_int(name: str, value: str) -> int:
     :param value: Value
     :return: Value as integer
     """
-    if not (value.isdigit() and int(value) > 0):
+    try:
+        int_value = int(value)
+    except ValueError:
         raise AssertionError(
             "Expected a positive integer for {}, but got `{}`".format(name, value))
 
-    return int(value)
+    if int_value < 1:
+        AssertionError(
+            "Expected a positive integer for {}, but got `{}`".format(name, value))
+
+    return int_value
 
 
 def assert_pos_float(name: str, value: str) -> float:

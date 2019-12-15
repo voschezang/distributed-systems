@@ -53,7 +53,7 @@ class WorkerInfo:
     def is_registered(self):
         return self.meta_data.is_registered()
 
-    def start_worker(self, worker_script, hostname_master, port_master, scale, method, number_of_random_walkers=1, load_backup=0):
+    def start_worker(self, worker_script, hostname_master, port_master, scale, method, number_of_random_walkers=1, load_backup=0, backup_size=100, walking_iterations=1):
         self.meta_data.host = None
         self.meta_data.port = None
 
@@ -66,7 +66,9 @@ class WorkerInfo:
             scale,
             method,
             load_backup,
-            number_of_random_walkers
+            number_of_random_walkers,
+            backup_size,
+            walking_iterations
         )
 
 
@@ -116,9 +118,9 @@ class WorkerInfoCollection:
     def all_workers_done(self):
         return all([worker_info.job_complete for worker_info in self.worker_info_collection.values()])
 
-    def start_workers(self, worker_script: str, hostname_master: str, port_master: int, scale: float, method: str, number_of_random_walkers: int = 1):
+    def start_workers(self, worker_script: str, hostname_master: str, port_master: int, scale: float, method: str, number_of_random_walkers: int = 1, backup_size: int = 100, walking_iterations: int = 1):
         for worker_info in self.worker_info_collection.values():
-            worker_info.start_worker(worker_script, hostname_master, port_master, scale, method, number_of_random_walkers)
+            worker_info.start_worker(worker_script, hostname_master, port_master, scale, method, number_of_random_walkers, backup_size=backup_size, walking_iterations=walking_iterations)
 
     def random_walker_count(self):
         return sum([worker_info.random_walker_count for worker_info in self.worker_info_collection.values()])
