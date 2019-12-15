@@ -44,6 +44,8 @@ class Worker(WorkerInterface):
         self.backup_sender = None
 
         self.receive_graph()
+        self.send_debug_message(f"Receiving graph took {time() - self.file_receivers[message.GRAPH].started_at}")
+        setup_graph_started_at = time()
 
         if method == "random_edge":
             self.scale = scale
@@ -52,6 +54,7 @@ class Worker(WorkerInterface):
                 vertex1_label, vertex2_label = file_io.parse_to_edge(line)
                 self.edges.append(Edge(Vertex(vertex1_label), Vertex(vertex2_label)))
             self.edges = array(self.edges)
+            self.send_debug_message(f"Setting up graph took {time() - setup_graph_started_at}")
             self.send_debug_message(f"Setup time: {time() - started_at}")
             self.wait_until_continue()
             self.run_random_edge()
@@ -61,6 +64,7 @@ class Worker(WorkerInterface):
             self.random_walkers = [
                 RandomWalker(self.get_random_vertex()) for _ in range(number_of_random_walkers)
             ]
+            self.send_debug_message(f"Setting up graph took {time() - setup_graph_started_at}")
 
             for vertex_label in self.add_random_walker_at:
                 self.random_walkers.append(RandomWalker(self.graph.vertices[vertex_label]))

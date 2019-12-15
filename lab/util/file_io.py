@@ -80,6 +80,27 @@ def read_rest_of_edges(f: TextIO, start_vertex: str):
         rest_of_edges.append(current_edge)
 
 
+def count_vertices(path: str):
+    counts = {}
+
+    f = open(path, "r")
+    for line in f:
+        vertex1, vertex2 = parse_to_edge(line)
+
+        try:
+            counts[vertex1] += 1
+        except KeyError:
+            counts[vertex1] = 1
+
+        try:
+            counts[vertex2] += 1
+        except KeyError:
+            counts[vertex2] = 1
+    f.close()
+
+    return counts
+
+
 def read_in_chunks(f: TextIO, n_workers: int) -> [str]:
     """
     Generator that divides a file into n_workers parts, where each part contains all the edges from each start vertex
@@ -88,30 +109,42 @@ def read_in_chunks(f: TextIO, n_workers: int) -> [str]:
     :param n_workers: Number of parts to divide the files in
     :return: List of lines
     """
+    vertex_counts = count_vertices(f.name)
     number_of_lines = get_number_of_lines(f.name)
 
-    chunk_size = int(floor(number_of_lines / n_workers))
+    chunk_size = int(floor(number_of_lines * 2 / n_workers))
 
-    lines_read = 0
     edges = []
-    for i in range(n_workers - 1):
-        # Get chunk
-        edges += read_n_lines(f, chunk_size)
+    lines_read = 0
+    for i in range(n_workers):
+        if len(edges) > 0:
+            last_start_vertex = get_start_vertex(edges[-1])
+            number_of_vertices = vertex_counts[last_start_vertex]
+        else:
+            number_of_vertices = 0
+            last_start_vertex = None
 
-        # Get rest of edges with the same start vertex and the new edge for the next worker
-        new_edge, rest_of_edges = read_rest_of_edges(f, str(get_start_vertex(edges[-1])))
+        while True:
+            try:
+                edge = next(f)
+            except StopIteration:
+                yield edges
+                return
 
-        edges += rest_of_edges
-        lines_read += len(edges)
+            edges.append(edge)
 
-        # Return part for worker
-        yield edges
+            start_vertex = get_start_vertex(edge)
 
-        # New collection starts with the last found edge
-        edges = [new_edge]
+            if start_vertex != last_start_vertex:
+                if i < n_workers - 1 and number_of_vertices + vertex_counts[start_vertex] >= chunk_size:
+                    yield edges
+                    edges = [edge]
+                    break
 
-    # Return the last found edge and the rest of the edges in the file (-1 is for the last found edge)
-    yield edges + read_n_lines(f, number_of_lines - lines_read - 1)
+                number_of_vertices += vertex_counts[start_vertex]
+                last_start_vertex = start_vertex
+
+            lines_read += 1
 
 
 def read_as_reversed_edges(f: TextIO):

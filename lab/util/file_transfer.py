@@ -1,4 +1,5 @@
-from lab.util import file_io, message
+from lab.util import message
+from time import time
 
 
 class UnexpectedChunkIndex(Exception):
@@ -15,6 +16,7 @@ class FileReceiver:
         self.file = []
         self.expected_number_of_chunks = expected_number_of_chunks
         self.expected_chunk_index = 0
+        self.started_at = time()
 
     @property
     def received_complete_file(self):
@@ -37,6 +39,7 @@ class FileSender:
         self.messages = self.create_messages(worker_id, data, file_type)
         self.target_received_file = False
         self.index = 0
+        self.started_at = time()
 
     @property
     def complete_file_send(self):
