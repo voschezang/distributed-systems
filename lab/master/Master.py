@@ -442,7 +442,7 @@ class Master(Server):
 
         if self.method == "random_walk":
             while self.total_progress() < self.goal_size:
-                sleep(0.1)
+                sleep(0.01)
                 self.handle_queue()
 
                 if self.show_debug_messages:
