@@ -6,8 +6,8 @@ from time import sleep
 class Upscaler(Master):
     def run(self):
         print('Upscaler')
-        # while self.total_progress() < self.goal_size:
-        for i in range(100):
+        while self.total_progress() < self.goal_size:
+            # for i in range(100):
             sleep(0.1)
             self.handle_queue()
             self.print_progress()

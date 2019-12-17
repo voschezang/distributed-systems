@@ -93,8 +93,9 @@ class WorkerInterface(Client, Server):
     def run(self):
         raise NotImplementedError()
 
-    def send_progress_message(self, *args):
-        raise NotImplementedError()
+    def send_progress_message(self, count):
+        self.send_message_to_master(
+            message.write_progress(self.worker_id, count))
 
     def handle_finish_job(self, *args):
         self.cancel = True

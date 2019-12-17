@@ -153,9 +153,6 @@ class Worker(WorkerInterface):
             [str(edge) + '\n' for edge in self.collected_edges])
         self.send_job_complete()
 
-    def send_progress_message(self, count):
-        self.send_message_to_master(message.write_progress(self.worker_id, count))
-
     def run_random_walk(self):
         """
         Runs the worker

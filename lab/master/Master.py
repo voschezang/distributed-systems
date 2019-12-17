@@ -53,9 +53,10 @@ class Master(Server):
         self.register_workers()
         self.send_meta_data_to_workers()
         self.send_graphs_to_workers()
+        print('post handle interface')
 
         self.goal_size = self.get_goal_size()
-        print(f"Master setup time: {time() - started_at}")
+        print(f"Master setup time: {time() - started_at:0.5f}")
         self.print_params()
 
         # Run master until stopped
@@ -71,12 +72,13 @@ class Master(Server):
 
         if self.method == "random_walk":
             print(f"Number of workers: {len(self.worker_hostnames)}")
-            print(f"Random walker per worker: {self.random_walkers_per_worker}")
+            print(
+                f"Random walker per worker: {self.random_walkers_per_worker}")
             print(f"Backup size: {self.backup_size}")
             print(f"Walking iterations: {self.walking_iterations}")
 
         print(f"Output file: {self.output_file}")
-        print(f"Goal size: {self.goal_size}")
+        print(f"Goal size: {self.goal_size:0.5f}")
         print()
 
     def debug(self, message: str):
@@ -87,7 +89,8 @@ class Master(Server):
         return self.worker_info_collection.get_total_number_of_edges() * self.scale
 
     def send_graph_to_worker(self, worker_id):
-        data = read_file(self.worker_info_collection[worker_id].input_sub_graph_path)
+        data = read_file(
+            self.worker_info_collection[worker_id].input_sub_graph_path)
         self.send_data_to_worker(worker_id, data, message.GRAPH)
         self.debug(f'Worker {worker_id} received graph')
 
@@ -127,7 +130,8 @@ class Master(Server):
                     meta_data=MetaData(
                         worker_id=worker_id,
                         number_of_edges=get_number_of_lines(graph_path),
-                        min_vertex=get_start_vertex(get_first_line(graph_path)),
+                        min_vertex=get_start_vertex(
+                            get_first_line(graph_path)),
                         max_vertex=get_start_vertex(get_last_line(graph_path))
                     )
                 )
@@ -145,7 +149,8 @@ class Master(Server):
                 meta_data=MetaData(
                     worker_id=worker_id,
                     number_of_edges=get_number_of_lines(sub_graph_path),
-                    min_vertex=get_start_vertex(get_first_line(sub_graph_path)),
+                    min_vertex=get_start_vertex(
+                        get_first_line(sub_graph_path)),
                     max_vertex=get_start_vertex(get_last_line(sub_graph_path))
                 )
             )
@@ -224,7 +229,8 @@ class Master(Server):
         :param port: Port of worker
         """
 
-        self.worker_info_collection[worker_id].meta_data.set_connection_info(host, port)
+        self.worker_info_collection[worker_id].meta_data.set_connection_info(
+            host, port)
         self.handle_alive(worker_id)
         self.debug(f"Registered worker {worker_id} on {host}:{port}")
 
@@ -262,43 +268,53 @@ class Master(Server):
             self.worker_info_collection[worker_id].file_senders[file_type].target_received_file = True
 
     def send_data_to_worker(self, worker_id: int, data: list, file_type: int):
-        self.worker_info_collection[worker_id].file_senders[file_type] = FileSender(worker_id, file_type, data)
+        self.worker_info_collection[worker_id].file_senders[file_type] = FileSender(
+            worker_id, file_type, data)
         file_sender = self.worker_info_collection[worker_id].file_senders[file_type]
 
-        self.send_message_to_worker(worker_id, message.write_start_send_file(worker_id, file_type, len(file_sender.messages)))
+        self.send_message_to_worker(worker_id, message.write_start_send_file(
+            worker_id, file_type, len(file_sender.messages)))
         while not file_sender.target_received_file or not file_sender.complete_file_send:
             if file_sender.complete_file_send:
-                self.send_message_to_worker(worker_id, message.write_end_send_file(worker_id, file_type))
+                self.send_message_to_worker(
+                    worker_id, message.write_end_send_file(worker_id, file_type))
                 sleep(0.1)
             else:
-                self.send_message_to_worker(worker_id, file_sender.get_next_message())
+                self.send_message_to_worker(
+                    worker_id, file_sender.get_next_message())
 
             self.handle_queue()
 
         self.worker_info_collection[worker_id].file_senders[file_type] = None
 
     def handle_start_send_file(self, worker_id, file_type, number_of_chunks):
-        self.worker_info_collection[worker_id].file_receivers[file_type] = FileReceiver(number_of_chunks)
+        self.worker_info_collection[worker_id].file_receivers[file_type] = FileReceiver(
+            number_of_chunks)
 
     def handle_file_chunk(self, worker_id, file_type, index, chunk):
         if self.worker_info_collection[worker_id].file_receivers[file_type] is None:
             return
 
         try:
-            self.worker_info_collection[worker_id].file_receivers[file_type].receive_chunk(index, chunk)
+            self.worker_info_collection[worker_id].file_receivers[file_type].receive_chunk(
+                index, chunk)
         except UnexpectedChunkIndex as e:
-            self.send_message_to_worker(worker_id, message.write_missing_chunk(worker_id, file_type, e.expected_index))
+            self.send_message_to_worker(worker_id, message.write_missing_chunk(
+                worker_id, file_type, e.expected_index))
 
     def handle_end_send_file(self, worker_id, file_type):
         try:
-            self.worker_info_collection[worker_id].file_receivers[file_type].handle_end_send_file()
-            self.send_message_to_worker(worker_id, message.write_received_file(worker_id, file_type))
+            self.worker_info_collection[worker_id].file_receivers[file_type].handle_end_send_file(
+            )
+            self.send_message_to_worker(
+                worker_id, message.write_received_file(worker_id, file_type))
 
             if file_type == message.BACKUP:
                 self.handle_backup(worker_id)
 
         except UnexpectedChunkIndex as e:
-            self.send_message_to_worker(worker_id, message.write_missing_chunk(worker_id, file_type, e.expected_index))
+            self.send_message_to_worker(worker_id, message.write_missing_chunk(
+                worker_id, file_type, e.expected_index))
         except AttributeError:
             return
 
@@ -313,11 +329,13 @@ class Master(Server):
             if worker_info.is_registered():
                 if allow_connection_refused:
                     try:
-                        sockets.send_message(*worker_info.meta_data.get_connection_info(), message)
+                        sockets.send_message(
+                            *worker_info.meta_data.get_connection_info(), message)
                     except ConnectionRefusedError:
                         continue
                 else:
-                    sockets.send_message(*worker_info.meta_data.get_connection_info(), message)
+                    sockets.send_message(
+                        *worker_info.meta_data.get_connection_info(), message)
 
     def send_meta_data_to_workers(self, allow_connection_refused: bool = False):
         self.broadcast(message.write_meta_data([
@@ -329,7 +347,8 @@ class Master(Server):
 
     def print_progress(self):
         stdout.write('\r')
-        stdout.write(f"{self.total_progress() / self.goal_size * 100:0.5f}% \t")
+        stdout.write(
+            f"{self.total_progress() / self.goal_size * 100:0.5f}% \t")
         stdout.flush()
 
     def wait_for_workers_to_complete(self):
@@ -356,7 +375,8 @@ class Master(Server):
             sleep(0.01)
 
     def pause_workers(self):
-        self.broadcast(message.write_worker_failed(), allow_connection_refused=True)
+        self.broadcast(message.write_worker_failed(),
+                       allow_connection_refused=True)
 
     def continue_workers(self):
         self.broadcast(message.write_continue(), allow_connection_refused=True)
@@ -380,7 +400,8 @@ class Master(Server):
         # Update connection info
         for worker_id in failed_workers:
             self.debug(f"Worker {worker_id} died")
-            self.worker_info_collection[worker_id].meta_data.set_connection_info(None, None)
+            self.worker_info_collection[worker_id].meta_data.set_connection_info(
+                None, None)
             self.worker_info_collection[worker_id].file_senders[message.GRAPH] = None
             self.worker_info_collection[worker_id].file_senders[message.BACKUP] = None
             self.worker_info_collection[worker_id].file_receivers[message.GRAPH] = None
@@ -392,14 +413,17 @@ class Master(Server):
         self.pause_workers()
 
         self.debug("Waiting for random walker counts")
-        self.wait_for_random_walker_counts(len(self.worker_info_collection) - len(failed_workers))
+        self.wait_for_random_walker_counts(
+            len(self.worker_info_collection) - len(failed_workers))
 
-        random_walkers_to_restart = len(self.worker_info_collection) * self.random_walkers_per_worker - self.worker_info_collection.random_walker_count()
+        random_walkers_to_restart = len(
+            self.worker_info_collection) * self.random_walkers_per_worker - self.worker_info_collection.random_walker_count()
 
         for worker_id in failed_workers:
             self.debug(f"Restarting worker {worker_id}")
 
-            number_of_random_walkers = ceil(random_walkers_to_restart / len(failed_workers))
+            number_of_random_walkers = ceil(
+                random_walkers_to_restart / len(failed_workers))
             if number_of_random_walkers < 0:
                 number_of_random_walkers = 0
 
@@ -430,7 +454,8 @@ class Master(Server):
 
         for worker_id in failed_workers:
             if len(self.worker_info_collection[worker_id].backup) > 0:
-                self.send_data_to_worker(worker_id, self.worker_info_collection[worker_id].backup[:], message.BACKUP)
+                self.send_data_to_worker(
+                    worker_id, self.worker_info_collection[worker_id].backup[:], message.BACKUP)
                 self.debug(f'Worker {worker_id} received backup')
 
         self.continue_workers()
@@ -456,12 +481,12 @@ class Master(Server):
             self.broadcast(message.write_job(message.FINISH_JOB))
 
         self.wait_for_workers_to_complete()
-        print(f"\nEdges received: {self.total_progress()}")
-        print(f"Job complete after {time() - started_at}")
+        print(f"\nEdges received: {self.total_progress():0.5f}")
+        print(f"Job complete after {time() - started_at:0.5f}")
 
         self.terminate_workers()
         self.server.terminate()
 
         graph = self.create_graph()
         graph.write_to_file(self.output_file)
-        print(f"Master runtime: {time() - started_at}")
+        print(f"Master runtime: {time() - started_at:0.5f}")

@@ -9,8 +9,8 @@ def main():
     """
 
     try:
-        worker_hostnames = get_arg(
-            "--worker-hostnames", assert_list, default='102.168.0.101,102.168.0.101')
+        worker_hostnames = get_arg("--worker-hostnames", assert_list,
+                                   default='192.168.0.101,192.168.0.101')
         graph_path = get_arg("--graph", assert_file)
         master_func = get_arg("--master", assert_master_type, default='Master')
         worker_script = get_arg("--worker-script", assert_file)

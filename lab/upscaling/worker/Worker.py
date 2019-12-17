@@ -9,10 +9,6 @@ from lab.upscaling.worker import Algorithm
 class Worker(WorkerInterface):
     def __init__(self, worker_id: int, master_host: str, master_port: int):
         super().__init__(worker_id, master_host, master_port)
-        # self.message_interface = {
-        #     message.FINISH_JOB: self.handle_finish_job,
-        #     message.TERMINATE: self.handle_terminate
-        # }
         self.message_interface = {
             message.META_DATA: self.handle_meta_data,
             message.FINISH_JOB: self.handle_finish_job,
@@ -22,9 +18,10 @@ class Worker(WorkerInterface):
             message.FILE_CHUNK: self.handle_file_chunk,
             message.END_SEND_FILE: self.handle_end_send_file,
             message.MISSING_CHUNK: self.handle_missing_chunk,
-            message.RECEIVED_FILE: self.handle_received_file
+            message.RECEIVED_FILE: self.handle_received_file,
+            message.TERMINATE: self.handle_terminate
         }
-        self.graph_path = 'TODO'
+        self.graph_path = 'TODO.txt'
         self.receive_graph()
         self.run()
 
@@ -58,14 +55,14 @@ class Worker(WorkerInterface):
             self.handle_queue()
             step += 1
 
-            # if step % 100 == 0:
-            # print(f'worker step {step}')
-            #     self.send_progress_message(step)
+            if step % 100 == 0:
+                # print(f'worker step {step}')
+                self.send_progress_message(step)
 
         diff = algorithm.scaled_graph
         diff.save_to_file(self.output_filename, bidirectional=False)
 
-        self.send_job_complete(self.output_filename)
+        self.send_job_complete()
 
         while True:
             sleep(0.1)
