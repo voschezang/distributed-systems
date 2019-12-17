@@ -71,7 +71,7 @@ class Graph:
                     self._inverse_edges[target] = []
                 self._inverse_edges[target].append(source)
 
-    def addEdgeSet(self, edgeSet, bidirectional=True):
+    def addEdgeSet(self, edgeSet, bidirectional=True, ignore_duplicates=False):
         number_of_edges = len(edgeSet)
         print("loading {} edges...".format(number_of_edges))
         for edge in edgeSet:
@@ -82,16 +82,24 @@ class Graph:
                 vertex_2 = self.addVertex(v_2)
             vertex_1 = self.vertices_dict[v_1]
             vertex_2 = self.vertices_dict[v_2]
-            self.addEdge(vertex_1, vertex_2, bidirectional)
+            if ignore_duplicates:
+                try:
+                    self.addEdge(vertex_1, vertex_2, bidirectional)
+                except ValueError:
+                    return
 
-    def addEdge(self, vertex_1: Vertex, vertex_2: Vertex, bidirectional=True):
+            else:
+                self.addEdge(vertex_1, vertex_2, bidirectional, strict)
+
+    def addEdge(self, vertex_1: Vertex, vertex_2: Vertex, bidirectional=True, strict=True):
         if not vertex_1 in self.vertices:
             raise ValueError("Vertex %s not known in this graph" % vertex_1)
         if not vertex_2 in self.vertices:
             raise ValueError("Vertex %s not known in this graph" % vertex_2)
         if vertex_2 in self.edges[vertex_1]:
-            raise ValueError(
-                "Edge (%s, %s) already exists in this graph" % (vertex_1, vertex_2))
+            if strict:
+                raise ValueError(
+                    "Edge (%s, %s) already exists in this graph" % (vertex_1, vertex_2))
         for vertex in [vertex_1, vertex_2]:
             if vertex not in self.edges.keys():
                 self.edges[vertex] = []
@@ -186,6 +194,18 @@ class Graph:
                 v_1, v_2 = line[:-1].split(" ")
                 edge_set.append([int(v_1), int(v_2)])
         self.addEdgeSet(edge_set)
+
+    def load_from_list(self, data):
+        edge_set = []
+        for lines in data:
+            for line in lines.split('\n'):
+                if not line:
+                    continue
+
+                v_1, v_2 = line.split(" ")
+                edge_set.append([int(v_1), int(v_2)])
+
+        self.addEdgeSet(edge_set, ignore_duplicates=True)
 
     def save_to_file(self, filename="graph.txt", mode='adjacency_list', bidirectional=True):
         if mode == 'adjacency_list':

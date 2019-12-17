@@ -39,9 +39,12 @@ class WorkerInfo:
         return self.last_alive is not None and time() - self.last_alive < MAX_HEARTBEAT_DELAY
 
     def update_meta_data(self):
-        self.meta_data.number_of_edges = get_number_of_lines(self.input_sub_graph_path)
-        self.meta_data.min_vertex = get_start_vertex(get_first_line(self.input_sub_graph_path))
-        self.meta_data.max_vertex = get_start_vertex(get_last_line(self.input_sub_graph_path))
+        self.meta_data.number_of_edges = get_number_of_lines(
+            self.input_sub_graph_path)
+        self.meta_data.min_vertex = get_start_vertex(
+            get_first_line(self.input_sub_graph_path))
+        self.meta_data.max_vertex = get_start_vertex(
+            get_last_line(self.input_sub_graph_path))
 
     def sort_sub_graph(self):
         sort_file(self.input_sub_graph_path)
@@ -110,7 +113,14 @@ class WorkerInfoCollection:
 
     def terminate_workers(self):
         for worker_info in self.worker_info_collection.values():
-            worker_info.process.close()
+            try:
+                worker_info.process.terminate()
+            except AttributeError:
+                pass
+            try:
+                worker_info.process.close()
+            except AttributeError:
+                pass
 
     def get_progress(self):
         return sum([worker_info.progress for worker_info in self.worker_info_collection.values()])
@@ -120,7 +130,8 @@ class WorkerInfoCollection:
 
     def start_workers(self, worker_script: str, hostname_master: str, port_master: int, scale: float, method: str, number_of_random_walkers: int = 1, backup_size: int = 100, walking_iterations: int = 1):
         for worker_info in self.worker_info_collection.values():
-            worker_info.start_worker(worker_script, hostname_master, port_master, scale, method, number_of_random_walkers, backup_size=backup_size, walking_iterations=walking_iterations)
+            worker_info.start_worker(worker_script, hostname_master, port_master, scale, method,
+                                     number_of_random_walkers, backup_size=backup_size, walking_iterations=walking_iterations)
 
     def random_walker_count(self):
         return sum([worker_info.random_walker_count for worker_info in self.worker_info_collection.values()])

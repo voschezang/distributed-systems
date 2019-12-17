@@ -36,6 +36,10 @@ class Server:
 
         # Wait for server to send its hostname and port
         self.hostname, self.port = self.server_queue.get()
+        # if len(self.hostname) > 6 and self.hostname[-6:] == '.local':
+        #     # Fix for MacOS
+        #     self.hostname = self.hostname[:-6]
+        #     print(self.hostname)
 
     def handle_queue(self):
         while self.message_in_queue():

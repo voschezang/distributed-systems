@@ -128,8 +128,9 @@ def assert_host(name: str, value: str) -> str:
     :param value: Value
     :return: Value as string
     """
-    if os.system("ping -c 1 -w2 {} > /dev/null 2>&1".format(value)) != 0:
-        raise AssertionError("Invalid path for {}: `{}`".format(name, value))
+    # if os.system("ping -c 1 -w2 {} > /dev/null 2>&1".format(value)) != 0:
+    if os.system("ping -c 1 {} > /dev/null 2>&1".format(value)) != 0:
+        raise AssertionError("Invalid host for {}: `{}`".format(name, value))
 
     return value
 

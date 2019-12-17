@@ -74,11 +74,13 @@ class DegreeDistrubution(Algorithm):
         for new_neighbour in new_neighbours:
             # TODO ignore duplicate edges and reflexive edges?
             self.new_graph.addEdge(new_vertex, new_neighbour)
-            # adding bidirectional edges biasses the graph
-            # counter this by removing a random edge
-            collateral_vertex = np.random.choice(
-                self.new_graph.edges[new_neighbour])
-            self.new_graph.removeEdge(new_neighbour, collateral_vertex)
+            # adding bidirectional edges biasses the graph to have +1 edge
+            # countering this biasses the graph to have -1 edge
+            # workaround: counter 50% of the edges
+            if np.random.random() > 0.5:
+                collateral_vertex = np.random.choice(
+                    self.new_graph.edges[new_neighbour])
+                self.new_graph.removeEdge(new_neighbour, collateral_vertex)
 
 
 class GScalerAlgorithm(Algorithm):

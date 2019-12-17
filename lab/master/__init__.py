@@ -9,7 +9,8 @@ def main():
     """
 
     try:
-        worker_hostnames = get_arg("--worker-hostnames", assert_list)
+        worker_hostnames = get_arg(
+            "--worker-hostnames", assert_list, default='102.168.0.101,102.168.0.101')
         graph_path = get_arg("--graph", assert_file)
         master_func = get_arg("--master", assert_master_type, default='Master')
         worker_script = get_arg("--worker-script", assert_file)
@@ -17,10 +18,13 @@ def main():
         output_file = get_arg("--output-file", assert_path,
                               default='data/graph_generated.txt')
         scale = get_arg("--scale", assert_pos_float)
-        method = get_arg("--method", assert_method)
-        backup_size = get_arg("--backup-size", assert_positive_int, default=100)
-        walking_iterations = get_arg("--walking-iterations", assert_positive_int, default=1)
-        random_walkers_per_worker = get_arg("--random-walkers-per-worker", assert_positive_int, default=1)
+        method = get_arg("--method", assert_method, default='random_walk')
+        backup_size = get_arg(
+            "--backup-size", assert_positive_int, default=100)
+        walking_iterations = get_arg(
+            "--walking-iterations", assert_positive_int, default=1)
+        random_walkers_per_worker = get_arg(
+            "--random-walkers-per-worker", assert_positive_int, default=1)
         debug = get_arg("--debug", assert_bool, default=True)
     except AssertionError as e:
         print_error(e)

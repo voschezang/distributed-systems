@@ -4,6 +4,10 @@ from time import sleep
 from lab.util import sockets, message
 from lab.util.meta_data import MetaData, CombinedMetaData
 from lab.util.server import Server
+from lab.util import message, file_io, validation
+from lab.util.file_transfer import FileReceiver, UnexpectedChunkIndex, FileSender
+from lab.util.meta_data import CombinedMetaData, MetaData
+from typing import Dict
 
 
 class Client:
@@ -55,7 +59,8 @@ class HeartbeatDaemon(Client):
 
         while True:
             try:
-                self.send_message_to_master(message.write_alive(self.worker_id))
+                self.send_message_to_master(
+                    message.write_alive(self.worker_id))
             except ConnectionRefusedError:
                 return
 
@@ -78,6 +83,13 @@ class WorkerInterface(Client, Server):
         # Wait for the meta data of the other workers
         self.combined_meta_data: CombinedMetaData = self.receive_meta_data()
 
+        self.file_receivers: Dict[int, FileReceiver] = {
+            message.GRAPH: None,
+            message.BACKUP: None
+        }
+
+        self.backup_sender = None
+
         self.init_heartbeat_daemon(wait_time=0.5)
 
     def run(self):
@@ -93,6 +105,19 @@ class WorkerInterface(Client, Server):
         self.heartbeat_daemon.terminate()
         self.server.terminate()
 
+    def handle_meta_data(self, all_meta_data):
+        self.combined_meta_data = CombinedMetaData([
+            MetaData(
+                worker_id=meta_data['worker_id'],
+                number_of_edges=meta_data['number_of_edges'],
+                min_vertex=meta_data['min_vertex'],
+                max_vertex=meta_data['max_vertex'],
+                host=meta_data['host'],
+                port=meta_data['port']
+            )
+            for meta_data in all_meta_data
+        ])
+
     def receive_meta_data(self) -> CombinedMetaData:
         status, all_meta_data = self.get_message_from_queue()
 
@@ -107,6 +132,54 @@ class WorkerInterface(Client, Server):
             )
             for meta_data in all_meta_data
         ])
+
+    def handle_start_send_file(self, worker_id, file_type, number_of_chunks):
+        self.file_receivers[file_type] = FileReceiver(number_of_chunks)
+
+    def handle_file_chunk(self, worker_id, file_type, index, chunk):
+        try:
+            self.file_receivers[file_type].receive_chunk(index, chunk)
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_master(message.write_missing_chunk(
+                self.worker_id, file_type, e.expected_index))
+
+    def handle_end_send_file(self, worker_id, file_type):
+        try:
+            self.file_receivers[file_type].handle_end_send_file()
+            self.send_message_to_master(
+                message.write_received_file(self.worker_id, file_type))
+        except UnexpectedChunkIndex as e:
+            self.send_message_to_master(message.write_missing_chunk(
+                self.worker_id, file_type, e.expected_index))
+
+    def handle_missing_chunk(self, worker_id, file_type, index):
+        self.backup_sender.index = index
+
+    def handle_received_file(self, worker_id, file_type):
+        self.backup_sender.target_received_file = True
+
+    def send_backup_to_master(self, data: list):
+        self.backup_sender = FileSender(
+            self.worker_id, message.BACKUP, data=data)
+
+        self.send_message_to_master(message.write_start_send_file(
+            self.worker_id, message.BACKUP, len(self.backup_sender.messages)))
+        while not self.backup_sender.target_received_file or not self.backup_sender.complete_file_send:
+            if self.backup_sender.complete_file_send:
+                self.send_message_to_master(
+                    message.write_end_send_file(self.worker_id, message.BACKUP))
+                sleep(0.1)
+            else:
+                self.send_message_to_master(
+                    self.backup_sender.get_next_message())
+
+            self.handle_queue()
+
+        self.backup_sender = None
+
+    def receive_graph(self):
+        while self.file_receivers[message.GRAPH] is None or not self.file_receivers[message.GRAPH].received_complete_file:
+            self.handle_queue()
 
     def register(self):
         """
