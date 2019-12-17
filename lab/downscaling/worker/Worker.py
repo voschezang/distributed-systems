@@ -3,11 +3,8 @@ from lab.util.distributed_graph import DistributedGraph, ForeignVertex, Vertex, 
 from lab.downscaling.worker.RandomWalker import RandomWalker, ForeignVertexException
 from numpy.random import randint, random
 from numpy import array
-from lab.util import message, file_io, validation
-from lab.util.file_transfer import FileReceiver, UnexpectedChunkIndex, FileSender
-from lab.util.meta_data import CombinedMetaData, MetaData
+from lab.util import message, file_io
 from time import sleep, time
-from typing import Dict
 
 
 class Worker(WorkerInterface):
@@ -30,7 +27,12 @@ class Worker(WorkerInterface):
         }
 
         self.running = False
-        self.backup_size = backup_size
+
+        if backup_size == 0:
+            self.backup_size = float("inf")
+        else:
+            self.backup_size = backup_size
+
         self.walking_iterations = walking_iterations
 
         self.number_of_random_walkers = number_of_random_walkers

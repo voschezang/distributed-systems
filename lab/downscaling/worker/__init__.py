@@ -23,7 +23,7 @@ def main():
         method = get_arg("--method", assert_method)
         load_backup = get_arg("--load-backup", assert_bool, default=0)
         number_of_random_walkers = get_arg("--n-random-walkers", assert_nonnegative_int, default=1)
-        backup_size = get_arg("--backup-size", assert_positive_int, default=100)
+        backup_size = get_arg("--backup-size", assert_nonnegative_int, default=100)
         walking_iterations = get_arg("--walking-iterations", assert_positive_int, default=1)
 
     except AssertionError as e:
@@ -37,7 +37,7 @@ def main():
             "\t--method: The method to use for downscaling, `random_walk` or `random_edge`\n"
             "\t--load-backup: Should the worker load from a backup send by the master\n"
             "\t--n-random-walkers: Number of random walkers to start with\n"
-            "\t--backup-size: Minimum size of the backup before it will be send to the master during a run\n"
+            "\t--backup-size: Minimum size of the backup before it will be send to the master during a run, 0 if you want no backups\n"
             "\t--walking-iterations: The number of steps a random walker sets before the queue will be handled\n"
         )
         return
