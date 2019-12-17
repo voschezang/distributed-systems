@@ -30,14 +30,12 @@ class Client:
                     self.master_host, self.master_port, message_to_send)
                 return
             except ConnectionResetError:
-                # Possibly: [Errno 54] Connection reset by peer
                 # Try again until success
                 pass
             except BrokenPipeError:
-                # Possibly: [Errno 32] Broken pipe
+                # Try again until success
                 pass
-            # except Exception as e:
-            #     print('Send msg to master error \n\t', e)
+
             sleep(0.01 * i)
 
         raise Exception(
