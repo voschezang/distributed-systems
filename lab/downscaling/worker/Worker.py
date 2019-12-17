@@ -151,6 +151,9 @@ class Worker(WorkerInterface):
             [str(edge) + '\n' for edge in self.collected_edges])
         self.send_job_complete()
 
+    def send_progress_message(self, count):
+        self.send_message_to_master(message.write_progress(self.worker_id, count))
+
     def run_random_walk(self):
         """
         Runs the worker
@@ -158,6 +161,7 @@ class Worker(WorkerInterface):
 
         started_at = time()
         new_edges = []
+        last_progress_message_at = 0
 
         while not self.cancel:
             self.handle_queue()
@@ -178,6 +182,11 @@ class Worker(WorkerInterface):
                             continue
 
                         self.random_walkers.remove(random_walker)
+
+            # Make sure to not overload the master with progress messages
+            if len(self.collected_edges) % 100 == 0 and last_progress_message_at != len(self.collected_edges):
+                self.send_progress_message(len(self.collected_edges))
+                last_progress_message_at = len(self.collected_edges)
 
             if len(new_edges) > self.backup_size:
                 self.send_backup_to_master(new_edges)

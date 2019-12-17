@@ -21,6 +21,7 @@ class WorkerInfo:
         self.random_walker_count = 0
         self.backup = []
         self.hostname = hostname
+        self.progress = 0
 
         self.file_senders: Dict[int, FileSender] = {
             message.GRAPH: None,
@@ -30,10 +31,6 @@ class WorkerInfo:
             message.GRAPH: None,
             message.BACKUP: None
         }
-
-    @property
-    def progress(self):
-        return len(self.backup)
 
     def is_alive(self):
         return self.last_alive is not None and time() - self.last_alive < MAX_HEARTBEAT_DELAY

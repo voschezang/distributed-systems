@@ -46,7 +46,8 @@ class Master(Server):
             message.RECEIVED_FILE: self.handle_received_file,
             message.START_SEND_FILE: self.handle_start_send_file,
             message.END_SEND_FILE: self.handle_end_send_file,
-            message.FILE_CHUNK: self.handle_file_chunk
+            message.FILE_CHUNK: self.handle_file_chunk,
+            message.PROGRESS: self.handle_progress
         }
 
         self.register_workers()
@@ -230,6 +231,9 @@ class Master(Server):
     @staticmethod
     def handle_debug(worker_id, debug_message):
         print(f"Worker {worker_id}: {debug_message}")
+
+    def handle_progress(self, worker_id, count):
+        self.worker_info_collection[worker_id].progress = count
 
     def handle_job_complete(self, worker_id):
         self.worker_info_collection[worker_id].job_complete = True

@@ -22,6 +22,7 @@ FILE_CHUNK = 214
 MISSING_CHUNK = 215
 RECEIVED_FILE = 216
 END_SEND_FILE = 217
+PROGRESS = 218
 
 
 def write(status: int, body: dict or list = None):
@@ -149,6 +150,16 @@ def write_end_send_file(worker_id: int, file_type: int):
     )
 
 
+def write_progress(worker_id: int, count: int):
+    return write(
+        status=PROGRESS,
+        body={
+            'worker_id': worker_id,
+            'count': count
+        }
+    )
+
+
 def read_status(status):
     # Returns a constant function
     return lambda body: (status,)
@@ -202,6 +213,10 @@ def read_end_send_file(body: dict):
     return END_SEND_FILE, body['worker_id'], body['file_type']
 
 
+def read_progress(body: dict):
+    return PROGRESS, body['worker_id'], body['count']
+
+
 def read(message: bytes):
     content = json.loads(message.decode())
 
@@ -224,5 +239,6 @@ MESSAGE_INTERFACE = {
     RECEIVED_FILE: read_received_file,
     FILE_CHUNK: read_file_chunk,
     MISSING_CHUNK: read_missing_chunk,
-    END_SEND_FILE: read_end_send_file
+    END_SEND_FILE: read_end_send_file,
+    PROGRESS: read_progress
 }
