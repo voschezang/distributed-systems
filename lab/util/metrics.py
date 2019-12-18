@@ -27,7 +27,7 @@ def degree_distribution(graph: Graph, degree_attr='degree', bins='auto'):
     return {'pmf': bin_pmf,
             'bins': bins.round().astype(int),
             'mean': np.mean(degrees),
-            'std': np.std(degrees)
+            'std': np.std(degrees),
             }
 
 
@@ -59,6 +59,28 @@ def aspl(graph: nx.Graph):
         return shortest_paths.generic.average_shortest_path_length(graph)
     except NetworkXError:
         return np.inf
+
+
+def summarize(graph_path, save_pmf=True):
+    graph = Graph()
+    graph.load_from_file(graph_path)
+    result = degree_distribution(graph, 'degree')
+
+    # rename keys
+    result['degree mean'] = result.pop('mean')
+    result['degree std'] = result.pop('std')
+    if save_pmf:
+        result.pop('pmf')
+        result.pop('bins')
+
+    graph = nx.readwrite.edgelist.read_edgelist(
+        graph_path, nodetype=int, create_using=nx.Graph)
+    result['|V|'] = graph.number_of_nodes()
+    result['|E|'] = graph.number_of_edges()
+    result['avg clustring'] = average_clustering(graph)
+    result['diameter'] = diameter(graph)
+    result['aspl'] = aspl(graph)
+    return result
 
 
 if __name__ == '__main__':

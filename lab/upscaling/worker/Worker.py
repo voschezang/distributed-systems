@@ -5,6 +5,8 @@ from lab.util import message
 from lab.master.WorkerInterface import WorkerInterface
 from lab.upscaling.worker import Algorithm
 
+OUTPUT_DIR = 'tmp/upscaling/'
+
 
 class Worker(WorkerInterface):
     def __init__(self, worker_id: int, master_host: str, master_port: int):
@@ -21,23 +23,12 @@ class Worker(WorkerInterface):
             message.RECEIVED_FILE: self.handle_received_file,
             message.TERMINATE: self.handle_terminate
         }
-        self.graph_path = 'TODO.txt'
         self.receive_graph()
         self.run()
 
-    # @property
-    # def graph_path(self):
-    #     print(self.file_receivers[message.GRAPH].file)
-    #     return self.file_receivers[message.GRAPH].file
-
-    # def send_progress_message(self, step):
-    #     self.send_message_to_master(
-    #         message.write_progress(self.worker_id, step))
-
     @property
     def output_filename(self):
-        prefix, ext = self.graph_path.split('.')
-        return f'{prefix}-par-{self.worker_id}.{ext}'
+        return f'{OUTPUT_DIR}scaled_graph_part-{self.worker_id}.txt'
 
     def handle_continue(self):
         pass

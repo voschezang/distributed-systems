@@ -14,7 +14,7 @@ from math import ceil
 
 class Master(Server):
     def __init__(self, worker_hostnames: list, graph_path: str, worker_script: str, split_graph: bool, output_file: str,
-                 scale: float, method: str, random_walkers_per_worker: int, backup_size: int, walking_iterations: int,
+                 scale: float, method: str = '', random_walkers_per_worker: int = 1, backup_size: int = 0, walking_iterations: int = 1,
                  show_debug_messages: bool = True):
         started_at = time()
         super().__init__()
@@ -53,7 +53,6 @@ class Master(Server):
         self.register_workers()
         self.send_meta_data_to_workers()
         self.send_graphs_to_workers()
-        print('post handle interface')
 
         self.goal_size = self.get_goal_size()
         print(f"Master setup time: {time() - started_at:0.5f}")

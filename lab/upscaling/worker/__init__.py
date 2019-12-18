@@ -3,10 +3,9 @@ from lab.util.output import print_error
 from lab.util.validation import (
     assert_host,
     assert_nonnegative_int,
-    assert_positive_int,
-    assert_file)
+    assert_positive_int
+)
 from lab.upscaling.worker.Worker import Worker
-from lab.upscaling.worker.Algorithm import Algorithm
 
 
 def main():

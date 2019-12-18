@@ -71,7 +71,7 @@ class Graph:
                     self._inverse_edges[target] = []
                 self._inverse_edges[target].append(source)
 
-    def addEdgeSet(self, edgeSet, bidirectional=True, ignore_duplicates=False):
+    def addEdgeSet(self, edgeSet, bidirectional=True, ignore_duplicates=True):
         number_of_edges = len(edgeSet)
         print("loading {} edges...".format(number_of_edges))
         for edge in edgeSet:
@@ -89,15 +89,17 @@ class Graph:
                     return
 
             else:
-                self.addEdge(vertex_1, vertex_2, bidirectional, strict)
+                self.addEdge(vertex_1, vertex_2,
+                             bidirectional, ignore_duplicates)
 
-    def addEdge(self, vertex_1: Vertex, vertex_2: Vertex, bidirectional=True, strict=True):
+    def addEdge(self, vertex_1: Vertex, vertex_2: Vertex, bidirectional=True,
+                ignore_duplicates=False):
         if not vertex_1 in self.vertices:
             raise ValueError("Vertex %s not known in this graph" % vertex_1)
         if not vertex_2 in self.vertices:
             raise ValueError("Vertex %s not known in this graph" % vertex_2)
         if vertex_2 in self.edges[vertex_1]:
-            if strict:
+            if not ignore_duplicates:
                 raise ValueError(
                     "Edge (%s, %s) already exists in this graph" % (vertex_1, vertex_2))
         for vertex in [vertex_1, vertex_2]:
