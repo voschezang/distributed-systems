@@ -344,6 +344,9 @@ class Master(Server):
     def total_progress(self):
         return self.worker_info_collection.get_progress()
 
+    def total_edges_received(self):
+        return self.worker_info_collection.get_total_edges_received()
+
     def print_progress(self):
         stdout.write('\r')
         stdout.write(
@@ -482,7 +485,7 @@ class Master(Server):
         print('post while')
 
         self.wait_for_workers_to_complete()
-        print(f"\nEdges received: {self.total_progress():0.5f}")
+        print(f"\nEdges received: {self.total_edges_received()}")
         print(f"Job complete after {time() - started_at:0.5f}")
 
         self.terminate_workers()

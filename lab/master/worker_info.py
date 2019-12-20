@@ -100,6 +100,9 @@ class WorkerInfoCollection:
     def get_total_number_of_edges(self):
         return sum([get_number_of_lines(worker_info.input_sub_graph_path) for worker_info in self.worker_info_collection.values()])
 
+    def get_total_edges_received(self):
+        return sum([len(worker_info.backup) for worker_info in self.worker_info_collection.values()])
+
     def update_meta_data(self):
         for worker_info in self.worker_info_collection.values():
             worker_info.update_meta_data()
