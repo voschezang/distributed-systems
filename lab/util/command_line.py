@@ -23,20 +23,20 @@ def setup_worker(hostname_worker, script, worker_id, hostname_master,
                  port_master, scale, method, load_backup,
                  number_of_random_walkers, backup_size, walking_iterations):
     # Debug locally, without ssh
-    local = 1
-    if local:
-        return run_python_script(
-            script,
-            '--worker-id', str(worker_id),
-            '--master-host', hostname_master,
-            '--master-port', str(port_master),
-            '--scale', str(scale),
-            '--method', method,
-            '--load-backup', str(load_backup),
-            '--n-random-walkers', str(number_of_random_walkers),
-            '--backup-size', str(backup_size),
-            '--walking-iterations', str(walking_iterations)
-        )
+    # local = 1
+    # if local:
+    #     return run_python_script(
+    #         script,
+    #         '--worker-id', str(worker_id),
+    #         '--master-host', hostname_master,
+    #         '--master-port', str(port_master),
+    #         '--scale', str(scale),
+    #         '--method', method,
+    #         '--load-backup', str(load_backup),
+    #         '--n-random-walkers', str(number_of_random_walkers),
+    #         '--backup-size', str(backup_size),
+    #         '--walking-iterations', str(walking_iterations)
+    #     )
 
     return run_ssh_script(
         hostname_worker,
