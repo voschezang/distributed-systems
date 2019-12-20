@@ -20,7 +20,7 @@ def degree_distribution(graph: Graph, degree_attr='degree', bins='auto'):
     degrees = np.array([getattr(graph, degree_attr)(vertex)
                         for vertex in graph.vertices])
     # TODO check if log-bins yield better "performance"
-    # if so, determine whethere sampling within bins should be done with log scale as well (in Algorithm.DegreeDistrubution)
+    # if so, determine whethere sampling within bins should be done with log scale as well (in Algorithm.DegreeDistribution)
     hist, bins = np.histogram(degrees, bins=bins, density=False)
     # normalize manually because the bins are not uniform
     bin_pmf = hist / len(degrees)

@@ -1,6 +1,7 @@
 import subprocess
 
 # You should create this file yourself in order to run the program using ssh
+# By default, let local = 0
 from lab.util.ssh_connection_info import username, password, local
 
 from spur import SshShell

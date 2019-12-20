@@ -16,7 +16,7 @@ class Algorithm:
         raise NotImplementedError
 
 
-class DegreeDistrubution(Algorithm):
+class DegreeDistribution(Algorithm):
     """ Scale up by first adding random nodes and then adding edges until the
     desired degree distribution has been reached.
     """

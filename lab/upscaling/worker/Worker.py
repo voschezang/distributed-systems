@@ -6,12 +6,18 @@ from lab.master.WorkerInterface import WorkerInterface
 from lab.upscaling.worker import Algorithm
 from lab.upscaling.worker.Algorithm import GScalerAlgorithm
 
+# You should create this file yourself in order to run the program using ssh
+# by default, let shared_filesystem = 0
+import lab.util.ssh_connection_info
+from lab.util.ssh_connection_info import shared_filesystem
+
 OUTPUT_DIR = 'tmp/upscaling/'
 
 
 class Worker(WorkerInterface):
     def __init__(self, worker_id: int, master_host: str, master_port: int,
-                 method: str = 'DegreeDistrubution'):
+                 method: str = 'DegreeDistribution'):
+        print('init')
         super().__init__(worker_id, master_host, master_port)
         self.method = method
         self.message_interface = {
@@ -26,7 +32,8 @@ class Worker(WorkerInterface):
             message.RECEIVED_FILE: self.handle_received_file,
             message.TERMINATE: self.handle_terminate
         }
-        self.receive_graph()
+        if not shared_filesystem:
+            self.receive_graph()
         self.run()
 
     @property
@@ -37,9 +44,13 @@ class Worker(WorkerInterface):
         pass
 
     def run(self):
+        print('run w')
         graph = Graph()
-        graph.load_from_list(self.file_receivers[message.GRAPH].file)
-        algorithm = Algorithm.DegreeDistrubution(graph)
+        if shared_filesystem:
+            graph.load_from_file(lab.util.ssh_connection_info.graph_path)
+        else:
+            graph.load_from_list(self.file_receivers[message.GRAPH].file)
+        algorithm = Algorithm.DegreeDistribution(graph)
 
         if self.method == 'Gscaler':
             gscaler = GScalerAlgorithm(graph, scale=1.1)

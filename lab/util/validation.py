@@ -114,7 +114,7 @@ def assert_path(name: str, value: str) -> str:
 
 
 def assert_method(name: str, value: str) -> str:
-    if value in ["random_walk", "random_edge", "Gscaler", "DegreeDistrubution"]:
+    if value in ["random_walk", "random_edge", "Gscaler", "DegreeDistribution"]:
         return value
     else:
         raise AssertionError(
@@ -130,7 +130,7 @@ def assert_downscaling_method(name: str, value: str) -> str:
 
 
 def assert_upscaling_method(name: str, value: str) -> str:
-    if value in ["Gscaler", "DegreeDistrubution"]:
+    if value in ["Gscaler", "DegreeDistribution"]:
         return value
     else:
         raise AssertionError(

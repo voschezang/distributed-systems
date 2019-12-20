@@ -1,15 +1,20 @@
+from time import time, sleep
+from sys import stdout
+from uuid import uuid4
+from math import ceil
+
 from lab.master.worker_info import WorkerInfoCollection, WorkerInfo
+from lab.util.distributed_graph import DistributedGraph
 from lab.util import message, sockets
 from lab.util.file_io import read_in_chunks, get_start_vertex, get_first_line, get_last_line, read_as_reversed_edges, \
     append_edge, get_number_of_lines, write_to_file, read_file
 from lab.util.file_transfer import FileSender, UnexpectedChunkIndex, FileReceiver
 from lab.util.server import Server
-from time import time, sleep
 from lab.util.meta_data import MetaData
-from sys import stdout
-from lab.util.distributed_graph import DistributedGraph
-from uuid import uuid4
-from math import ceil
+
+# You should create this file yourself in order to run the program using ssh
+# by default, let shared_filesystem = 0
+from lab.util.ssh_connection_info import shared_filesystem
 
 
 class Master(Server):
@@ -52,7 +57,8 @@ class Master(Server):
 
         self.register_workers()
         self.send_meta_data_to_workers()
-        self.send_graphs_to_workers()
+        if not shared_filesystem:
+            self.send_graphs_to_workers()
 
         self.goal_size = self.get_goal_size()
         print(f"Master setup time: {time() - started_at:0.5f}")
@@ -481,8 +487,6 @@ class Master(Server):
 
                 self.control_workers()
             self.broadcast(message.write_job(message.FINISH_JOB))
-
-        print('post while')
 
         self.wait_for_workers_to_complete()
         print(f"\nEdges received: {self.total_edges_received()}")

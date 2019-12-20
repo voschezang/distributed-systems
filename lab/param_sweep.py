@@ -31,20 +31,20 @@ for _ in range(1):
     result['scale'] = 1
     results.append(result)
 
-    # for scale in [2, 10]:
-    for scale in [0.5]:
-        # DegreeDistrubution
+    for scale in [2, 10]:
+        # for scale in [0.5]:
+        # DegreeDistribution
         output_file = 'tmp/scaled_graph.txt'
         t0 = time()
-        # Upscaler(
-        #     worker_hostnames=np.arange(n_workers), graph_path=path,
-        #     worker_script='lab/upscaling/worker/__init__.py', split_graph=True,
-        #     output_file=output_file, scale=scale, method='DegreeDistrubution')
-
-        Master(
+        Upscaler(
             worker_hostnames=np.arange(n_workers), graph_path=path,
-            worker_script='lab/downscaling/worker/__init__.py', split_graph=True,
-            output_file=output_file, scale=scale, method='random_edge')
+            worker_script='lab/upscaling/worker/__init__.py', split_graph=True,
+            output_file=output_file, scale=scale, method='DegreeDistribution')
+
+        # Master(
+        #     worker_hostnames=np.arange(n_workers), graph_path=path,
+        #     worker_script='lab/downscaling/worker/__init__.py', split_graph=True,
+        #     output_file=output_file, scale=scale, method='random_edge')
 
         dt = time() - t0
         result = summarize(output_file)
