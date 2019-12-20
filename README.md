@@ -1,6 +1,9 @@
 # Distributed systems
 This repository contains the files of the course Distributed Systems taught at VU Amsterdam 2019-2020.
 
+## Setup
+Copy `lab.util.ssh_connection_info_example.py` to `lab.util.ssh_connection_info.py` and edit if necessary.
+
 
 ## Upscaling
 Download a graph, e.g. to `data/graph.txt`. For `method`, use `random_walk` or `random_edge`.
