@@ -6,7 +6,7 @@ from lab.util.validation import (
     assert_host,
     assert_bool,
     assert_pos_float,
-    assert_method)
+    assert_downscaling_method)
 from lab.downscaling.worker.Worker import Worker
 
 
@@ -20,11 +20,14 @@ def main():
         master_host = get_arg("--master-host", assert_host)
         master_port = get_arg("--master-port", assert_positive_int)
         scale = get_arg("--scale", assert_pos_float)
-        method = get_arg("--method", assert_method)
+        method = get_arg("--method", assert_downscaling_method)
         load_backup = get_arg("--load-backup", assert_bool, default=0)
-        number_of_random_walkers = get_arg("--n-random-walkers", assert_nonnegative_int, default=1)
-        backup_size = get_arg("--backup-size", assert_nonnegative_int, default=100)
-        walking_iterations = get_arg("--walking-iterations", assert_positive_int, default=1)
+        number_of_random_walkers = get_arg(
+            "--n-random-walkers", assert_nonnegative_int, default=1)
+        backup_size = get_arg(
+            "--backup-size", assert_nonnegative_int, default=100)
+        walking_iterations = get_arg(
+            "--walking-iterations", assert_positive_int, default=1)
 
     except AssertionError as e:
         print_error(e)
@@ -42,7 +45,8 @@ def main():
         )
         return
 
-    Worker(worker_id, master_host, master_port, scale, method, load_backup, number_of_random_walkers, backup_size, walking_iterations)
+    Worker(worker_id, master_host, master_port, scale, method, load_backup,
+           number_of_random_walkers, backup_size, walking_iterations)
 
 
 if __name__ == '__main__':

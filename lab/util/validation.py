@@ -114,10 +114,27 @@ def assert_path(name: str, value: str) -> str:
 
 
 def assert_method(name: str, value: str) -> str:
-    if value == "random_walk" or value == "random_edge":
+    if value in ["random_walk", "random_edge", "Gscaler", "DegreeDistrubution"]:
         return value
     else:
-        raise AssertionError("Invalid method for {}: `{}`".format(name, value))
+        raise AssertionError(
+            "Invalid scaling method for {}: `{}`".format(name, value))
+
+
+def assert_downscaling_method(name: str, value: str) -> str:
+    if value in ["random_walk", "random_edge"]:
+        return value
+    else:
+        raise AssertionError(
+            "Invalid downscaling method for {}: `{}`".format(name, value))
+
+
+def assert_upscaling_method(name: str, value: str) -> str:
+    if value in ["Gscaler", "DegreeDistrubution"]:
+        return value
+    else:
+        raise AssertionError(
+            "Invalid upscaling method for {}: `{}`".format(name, value))
 
 
 def assert_host(name: str, value: str) -> str:

@@ -4,13 +4,16 @@ from lab.util.graph import Graph
 from lab.util import message
 from lab.master.WorkerInterface import WorkerInterface
 from lab.upscaling.worker import Algorithm
+from lab.upscaling.worker.Algorithm import GScalerAlgorithm
 
 OUTPUT_DIR = 'tmp/upscaling/'
 
 
 class Worker(WorkerInterface):
-    def __init__(self, worker_id: int, master_host: str, master_port: int):
+    def __init__(self, worker_id: int, master_host: str, master_port: int,
+                 method: str = 'DegreeDistrubution'):
         super().__init__(worker_id, master_host, master_port)
+        self.method = method
         self.message_interface = {
             message.META_DATA: self.handle_meta_data,
             message.FINISH_JOB: self.handle_finish_job,
@@ -38,19 +41,28 @@ class Worker(WorkerInterface):
         graph.load_from_list(self.file_receivers[message.GRAPH].file)
         algorithm = Algorithm.DegreeDistrubution(graph)
 
-        step = 0
-        for step, _ in enumerate(algorithm):
-            if self.cancel:
-                break
-
+        if self.method == 'Gscaler':
+            gscaler = GScalerAlgorithm(graph, scale=1.1)
+            scaled_graph = gscaler.run()
+            scaled_graph.remove(graph)
+            diff = scaled_graph
             self.handle_queue()
-            step += 1
+            self.send_progress_message(100)
+        else:
+            step = 0
+            for step, _ in enumerate(algorithm):
+                if self.cancel:
+                    break
 
-            if step % 100 == 0:
-                # print(f'worker step {step}')
-                self.send_progress_message(step)
+                self.handle_queue()
+                step += 1
 
-        diff = algorithm.scaled_graph
+                if step % 100 == 0:
+                    # print(f'worker step {step}')
+                    self.send_progress_message(step)
+
+            diff = algorithm.scaled_graph
+
         diff.save_to_file(self.output_filename, bidirectional=False)
 
         self.send_job_complete()

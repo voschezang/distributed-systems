@@ -23,7 +23,7 @@ def setup_worker(hostname_worker, script, worker_id, hostname_master,
                  port_master, scale, method, load_backup,
                  number_of_random_walkers, backup_size, walking_iterations):
     # Debug locally, without ssh
-    local = 0
+    local = 1
     if local:
         return run_python_script(
             script,

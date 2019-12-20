@@ -3,7 +3,8 @@ from lab.util.output import print_error
 from lab.util.validation import (
     assert_host,
     assert_nonnegative_int,
-    assert_positive_int
+    assert_positive_int,
+    assert_upscaling_method
 )
 from lab.upscaling.worker.Worker import Worker
 
@@ -17,6 +18,7 @@ def main():
         worker_id = get_arg("--worker-id", assert_nonnegative_int)
         master_host = get_arg("--master-host", assert_host)
         master_port = get_arg("--master-port", assert_positive_int)
+        method = get_arg("--method", assert_upscaling_method)
     except Exception as e:
         print_error(e)
         print_error(
@@ -24,10 +26,11 @@ def main():
             "\t--worker-id: The id of the worker\n"
             "\t--master-host: The host of the master\n"
             "\t--master-port: The port of the master\n"
+            "\t--method: The method to use for upscaling, `Gscaler` or `DegreeDistribution`\n"
         )
         return
 
-    Worker(worker_id, master_host, master_port)
+    Worker(worker_id, master_host, master_port, method)
 
 
 if __name__ == '__main__':

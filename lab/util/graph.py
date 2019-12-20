@@ -128,6 +128,10 @@ class Graph:
         except KeyError:
             pass
 
+    def subtract(self, other_graph):
+        for vertex in other_graph.vertices:
+            self.graph.removeVertex(vertex)
+
     def removeEdge(self, a: Vertex, b: Vertex):
         # remove unidirectional edge but do not remove any
         # (possibly unconnectec) vertices
