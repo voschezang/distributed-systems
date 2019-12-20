@@ -1,7 +1,7 @@
 import subprocess
 
 # You should create this file yourself in order to run the program using ssh
-from lab.util.ssh_connection_info import username, password
+from lab.util.ssh_connection_info import username, password, local
 
 from spur import SshShell
 from spur.ssh import MissingHostKey, ShellTypes
@@ -23,7 +23,6 @@ def setup_worker(hostname_worker, script, worker_id, hostname_master,
                  port_master, scale, method, load_backup,
                  number_of_random_walkers, backup_size, walking_iterations):
     # Debug locally, without ssh
-    local = 1
     if local:
         return run_python_script(
             script,
