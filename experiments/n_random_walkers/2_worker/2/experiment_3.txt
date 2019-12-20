@@ -1,0 +1,36 @@
+[33m[1m
+IMPORTANT 1/2: ONLY SSH INTO NODES WHICH ARE CURRENTLY RESERVED BY YOU
+
+Run 'preserve -llist' to see your reserved nodes.
+
+Connecting to other nodes can disturb experiments,
+invalidating months or years of a scientist's work.
+
+IMPORTANT 2/2: DO NOT RUN EXPERIMENTS ON MACHINE FS0
+
+Run 'hostname' to find out on which machine you are currently working.
+Experiments should be performed by nodes reserved via preserve.
+You can access these nodes via SSH.
+
+(B[mWorker 0: Receiving graph took 0.319195032119751
+Worker 0: Setting up graph took 0.4183783531188965
+Worker 0: Setup time: 1.7126753330230713
+Worker 1: Receiving graph took 0.3116333484649658
+Worker 1: Setting up graph took 0.4882040023803711
+Worker 1: Setup time: 3.207615375518799
+Master setup time: 7.375383615493774
+Method: random_walk
+Scale: 0.2
+Number of workers: 2
+Random walker per worker: 2
+Backup size: 100
+Walking iterations: 1
+Output file: output/out.txt
+Goal size: 35293.8
+
+Worker 1: Runtime: 31.867588996887207
+Worker 0: Runtime: 31.908122062683105
+
+Edges received: 35325
+Job complete after 31.92713689804077
+Master runtime: 32.88885307312012

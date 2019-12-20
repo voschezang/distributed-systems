@@ -1,0 +1,54 @@
+[33m[1m
+IMPORTANT 1/2: ONLY SSH INTO NODES WHICH ARE CURRENTLY RESERVED BY YOU
+
+Run 'preserve -llist' to see your reserved nodes.
+
+Connecting to other nodes can disturb experiments,
+invalidating months or years of a scientist's work.
+
+IMPORTANT 2/2: DO NOT RUN EXPERIMENTS ON MACHINE FS0
+
+Run 'hostname' to find out on which machine you are currently working.
+Experiments should be performed by nodes reserved via preserve.
+You can access these nodes via SSH.
+
+(B[mTraceback (most recent call last):
+  File "lab/master/__init__.py", line 55, in <module>
+    main()
+  File "lab/master/__init__.py", line 51, in main
+    walking_iterations, debug)
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 55, in __init__
+    self.send_graphs_to_workers()
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 98, in send_graphs_to_workers
+    self.send_graph_to_worker(worker_id)
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 93, in send_graph_to_worker
+    self.send_data_to_worker(worker_id, data, message.GRAPH)
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 283, in send_data_to_worker
+    worker_id, file_sender.get_next_message())
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 259, in send_message_to_worker
+    message
+  File "/home/dsys1954/distributed-systems/lab/util/sockets.py", line 38, in send_message
+    s = connect(host, port)
+  File "/home/dsys1954/distributed-systems/lab/util/sockets.py", line 24, in connect
+    s.connect((host, port))
+OSError: [Errno 99] Cannot assign requested address
+^CError in atexit._run_exitfuncs:
+Traceback (most recent call last):
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/multiprocessing/popen_fork.py", line 29, in poll
+Process Process-1:
+    pid, sts = os.waitpid(self.pid, flag)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/multiprocessing/process.py", line 249, in _bootstrap
+    self.run()
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/multiprocessing/process.py", line 93, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/dsys1954/distributed-systems/lab/util/server.py", line 12, in __init__
+    self.listen()
+  File "/home/dsys1954/distributed-systems/lab/util/server.py", line 19, in listen
+    self.put_message_in_queue(sockets.get_message(self.socket))
+  File "/home/dsys1954/distributed-systems/lab/util/sockets.py", line 30, in get_message
+    client_socket, addr = s.accept()
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/socket.py", line 205, in accept
+    fd, addr = self._accept()
+KeyboardInterrupt

@@ -1,0 +1,45 @@
+[33m[1m
+IMPORTANT 1/2: ONLY SSH INTO NODES WHICH ARE CURRENTLY RESERVED BY YOU
+
+Run 'preserve -llist' to see your reserved nodes.
+
+Connecting to other nodes can disturb experiments,
+invalidating months or years of a scientist's work.
+
+IMPORTANT 2/2: DO NOT RUN EXPERIMENTS ON MACHINE FS0
+
+Run 'hostname' to find out on which machine you are currently working.
+Experiments should be performed by nodes reserved via preserve.
+You can access these nodes via SSH.
+
+(B[mWorker 0: Receiving graph took 1.40211820602417
+Worker 0: Setting up graph took 1.4630060195922852
+Worker 0: Setup time: 5.389913082122803
+Worker 1: Receiving graph took 1.1918411254882812
+Worker 1: Setting up graph took 1.3228812217712402
+Worker 1: Setup time: 10.017690896987915
+Master setup time: 20.66048
+Method: random_walk
+Scale: 0.2
+Number of workers: 2
+Random walker per worker: 1
+Backup size: 0
+Walking iterations: 100
+Output file: output/out.txt
+Goal size: 115601.40000
+
+^CProcess Process-1:
+Traceback (most recent call last):
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/multiprocessing/process.py", line 249, in _bootstrap
+    self.run()
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/multiprocessing/process.py", line 93, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/dsys1954/distributed-systems/lab/util/server.py", line 12, in __init__
+    self.listen()
+  File "/home/dsys1954/distributed-systems/lab/util/server.py", line 19, in listen
+    self.put_message_in_queue(sockets.get_message(self.socket))
+  File "/home/dsys1954/distributed-systems/lab/util/sockets.py", line 30, in get_message
+    client_socket, addr = s.accept()
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/socket.py", line 205, in accept
+    fd, addr = self._accept()
+KeyboardInterrupt

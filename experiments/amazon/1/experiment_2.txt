@@ -1,0 +1,47 @@
+[33m[1m
+IMPORTANT 1/2: ONLY SSH INTO NODES WHICH ARE CURRENTLY RESERVED BY YOU
+
+Run 'preserve -llist' to see your reserved nodes.
+
+Connecting to other nodes can disturb experiments,
+invalidating months or years of a scientist's work.
+
+IMPORTANT 2/2: DO NOT RUN EXPERIMENTS ON MACHINE FS0
+
+Run 'hostname' to find out on which machine you are currently working.
+Experiments should be performed by nodes reserved via preserve.
+You can access these nodes via SSH.
+
+(B[m^CTraceback (most recent call last):
+  File "lab/master/__init__.py", line 55, in <module>
+Process Process-1:
+    main()
+  File "lab/master/__init__.py", line 51, in main
+    walking_iterations, debug)
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 36, in __init__
+    self.create_workers(graph_path, split_graph)
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 184, in create_workers
+    self.process_graph(graph_path, split_graph)
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 111, in process_graph
+    self.split_graph(graph_path)
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 140, in split_graph
+    for worker_id, sub_graph in enumerate(read_in_chunks(f, len(self.worker_hostnames))):
+  File "/home/dsys1954/distributed-systems/lab/util/file_io.py", line 112, in read_in_chunks
+Traceback (most recent call last):
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/multiprocessing/process.py", line 249, in _bootstrap
+    self.run()
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/multiprocessing/process.py", line 93, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/dsys1954/distributed-systems/lab/util/server.py", line 12, in __init__
+    self.listen()
+  File "/home/dsys1954/distributed-systems/lab/util/server.py", line 19, in listen
+    self.put_message_in_queue(sockets.get_message(self.socket))
+  File "/home/dsys1954/distributed-systems/lab/util/sockets.py", line 30, in get_message
+    client_socket, addr = s.accept()
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/socket.py", line 205, in accept
+    fd, addr = self._accept()
+KeyboardInterrupt
+    vertex_counts = count_vertices(f.name)
+  File "/home/dsys1954/distributed-systems/lab/util/file_io.py", line 91, in count_vertices
+    counts[vertex1] += 1
+KeyboardInterrupt

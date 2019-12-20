@@ -1,0 +1,45 @@
+[33m[1m
+IMPORTANT 1/2: ONLY SSH INTO NODES WHICH ARE CURRENTLY RESERVED BY YOU
+
+Run 'preserve -llist' to see your reserved nodes.
+
+Connecting to other nodes can disturb experiments,
+invalidating months or years of a scientist's work.
+
+IMPORTANT 2/2: DO NOT RUN EXPERIMENTS ON MACHINE FS0
+
+Run 'hostname' to find out on which machine you are currently working.
+Experiments should be performed by nodes reserved via preserve.
+You can access these nodes via SSH.
+
+(B[m^CTraceback (most recent call last):
+  File "lab/master/__init__.py", line 55, in <module>
+    main()
+  File "lab/master/__init__.py", line 15, in main
+    master_func = get_arg("--master", assert_master_type, default='Master')
+  File "/home/dsys1954/distributed-systems/lab/util/argument_parser.py", line 28, in get_arg
+    value = assertion(name, value)
+  File "/home/dsys1954/distributed-systems/lab/util/validation.py", line 177, in assert_master_type
+    from lab.master.Master import Master
+  File "/home/dsys1954/distributed-systems/lab/master/Master.py", line 1, in <module>
+    from lab.master.worker_info import WorkerInfoCollection, WorkerInfo
+  File "/home/dsys1954/distributed-systems/lab/master/worker_info.py", line 3, in <module>
+    from lab.util.file_transfer import FileSender, FileReceiver
+  File "/home/dsys1954/distributed-systems/lab/util/file_transfer.py", line 1, in <module>
+    from lab.util import message
+  File "/home/dsys1954/distributed-systems/lab/util/message.py", line 1, in <module>
+    import json
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/json/__init__.py", line 106, in <module>
+    from .decoder import JSONDecoder, JSONDecodeError
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/json/decoder.py", line 5, in <module>
+    from json import scanner
+  File "/cm/shared/package/python/3.6.0/lib/python3.6/json/scanner.py", line 5, in <module>
+    from _json import make_scanner as c_make_scanner
+  File "<frozen importlib._bootstrap>", line 961, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 946, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 885, in _find_spec
+  File "<frozen importlib._bootstrap_external>", line 1157, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 1129, in _get_spec
+  File "<frozen importlib._bootstrap_external>", line 1241, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 82, in _path_stat
+KeyboardInterrupt
