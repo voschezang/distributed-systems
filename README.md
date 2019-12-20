@@ -37,15 +37,14 @@ It can handle the following arguments:
 - --walking-iterations: The number of steps a random walker sets before the queue will be handled
 - --debug: Show debug messages
 
-## Upscaling
+## Downscaling
 Download a graph, e.g. to `data/graph.txt`. For `method`, use `random_walk` or `random_edge`.
 
 ```
 python lab/master/__init__.py --graph data/graph.txt --master Master --worker-script lab/downscaling/worker/__init__.py --scale 0.1 --method random_walk
-
 ```
 
-## Downscaling
+## Upscaling
 Download a graph, e.g. to `data/graph.txt.
 
 ```
