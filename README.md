@@ -7,8 +7,8 @@ This repository contains the files of the course Distributed Systems taught at V
 - Clone repo
 - `cd distributed-systems`
 - `virtualenv` venv
-- pip install -r requirement.txt
-Copy `lab.util.ssh_connection_info_example.py` to `lab.util.ssh_connection_info.py` and edit if necessary.
+- `pip install -r requirement.txt`
+- Copy `lab.util.ssh_connection_info_example.py` to `lab.util.ssh_connection_info.py` and edit if necessary.
 
 
 # Directories
