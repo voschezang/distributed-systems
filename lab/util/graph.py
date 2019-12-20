@@ -130,7 +130,10 @@ class Graph:
 
     def subtract(self, other_graph):
         for vertex in other_graph.vertices:
-            self.graph.removeVertex(vertex)
+            try:
+                self.removeVertex(vertex)
+            except ValueError:
+                pass
 
     def removeEdge(self, a: Vertex, b: Vertex):
         # remove unidirectional edge but do not remove any

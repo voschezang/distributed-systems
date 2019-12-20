@@ -44,7 +44,7 @@ class Worker(WorkerInterface):
         if self.method == 'Gscaler':
             gscaler = GScalerAlgorithm(graph, scale=1.1)
             scaled_graph = gscaler.run()
-            scaled_graph.remove(graph)
+            scaled_graph.subtract(graph)
             diff = scaled_graph
             self.handle_queue()
             self.send_progress_message(100)

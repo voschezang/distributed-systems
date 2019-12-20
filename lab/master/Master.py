@@ -479,6 +479,8 @@ class Master(Server):
                 self.control_workers()
             self.broadcast(message.write_job(message.FINISH_JOB))
 
+        print('post while')
+
         self.wait_for_workers_to_complete()
         print(f"\nEdges received: {self.total_progress():0.5f}")
         print(f"Job complete after {time() - started_at:0.5f}")

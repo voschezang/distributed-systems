@@ -18,7 +18,7 @@ master_func = Upscaler
 # for f in filenames:
 results = []
 for _ in range(1):
-    n_workers = 4
+    n_workers = 2
 
     # generate graph
     path = 'tmp/generated_graph.txt'
@@ -31,24 +31,20 @@ for _ in range(1):
     result['scale'] = 1
     results.append(result)
 
-    for scale in [2]:
-        # for scale in [0.5]:
+    # for scale in [2, 10]:
+    for scale in [0.5]:
         # DegreeDistrubution
         output_file = 'tmp/scaled_graph.txt'
         t0 = time()
         # Upscaler(
         #     worker_hostnames=np.arange(n_workers), graph_path=path,
         #     worker_script='lab/upscaling/worker/__init__.py', split_graph=True,
-        #     output_file=output_file, scale=scale, method='')
-        graph = Graph()
-        graph.load_from_file(path)
-        gscaler = GScalerAlgorithm(graph, scale=1.1)
-        scaled_graph = gscaler.run()
-        scaled_graph.save_to_file(output_file)
-        # Master(
-        #     worker_hostnames=np.arange(n_workers), graph_path=path,
-        #     worker_script='lab/downscaling/worker/__init__.py', split_graph=True,
-        #     output_file=output_file, scale=scale, method='random_walk')
+        #     output_file=output_file, scale=scale, method='DegreeDistrubution')
+
+        Master(
+            worker_hostnames=np.arange(n_workers), graph_path=path,
+            worker_script='lab/downscaling/worker/__init__.py', split_graph=True,
+            output_file=output_file, scale=scale, method='random_edge')
 
         dt = time() - t0
         result = summarize(output_file)
