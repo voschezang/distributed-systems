@@ -61,25 +61,27 @@ def aspl(graph: nx.Graph):
         return np.inf
 
 
-def summarize(graph_path, save_pmf=True):
+def summarize(graph_path, save_pmf=True, extra_metrics=True, decimals=3):
     graph = Graph()
     graph.load_from_file(graph_path)
     result = degree_distribution(graph, 'degree')
 
     # rename keys
-    result['degree mean'] = result.pop('mean')
-    result['degree std'] = result.pop('std')
+    result['degree mean'] = np.round(result.pop('mean'), decimals)
+    result['degree std'] = np.round(result.pop('std'), decimals)
     if save_pmf:
         result.pop('pmf')
         result.pop('bins')
 
     graph = nx.readwrite.edgelist.read_edgelist(
         graph_path, nodetype=int, create_using=nx.Graph)
-    result['|V|'] = graph.number_of_nodes()
-    result['|E|'] = graph.number_of_edges()
-    result['avg clustring'] = average_clustering(graph)
-    result['diameter'] = diameter(graph)
-    result['aspl'] = aspl(graph)
+    result['|V|'] = np.round(graph.number_of_nodes())
+    result['|E|'] = np.round(graph.number_of_edges())
+    if extra_metrics:
+        print('extra_metrics')
+        result['avg clustring'] = average_clustering(graph)
+        result['diameter'] = diameter(graph)
+        result['aspl'] = aspl(graph)
     return result
 
 
