@@ -183,7 +183,7 @@ class Worker(WorkerInterface):
                         self.random_walkers.remove(random_walker)
 
             # Make sure to not overload the master with progress messages
-            if len(self.collected_edges) % 100 == 0 and last_progress_message_at != len(self.collected_edges):
+            if last_progress_message_at != len(self.collected_edges):
                 self.send_progress_message(len(self.collected_edges))
                 last_progress_message_at = len(self.collected_edges)
 
