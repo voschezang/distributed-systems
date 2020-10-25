@@ -1,5 +1,6 @@
 # Distributed systems
 This repository contains the files of the course Distributed Systems taught at VU Amsterdam 2019-2020.
+(This is a fork form [_original repo_](https://github.com/r-hoffmann/distributed-systems))
 
 # System setup
 
